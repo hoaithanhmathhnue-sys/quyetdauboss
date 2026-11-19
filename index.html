@@ -1,0 +1,1623 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quyết Chiến Với Boss</title>
+<meta name="description" content="Game lớp học môn Toán: cả lớp hoặc các đội trả lời câu hỏi (có công thức) để hạ Boss. Nhập đề Word có MathType, chạy được không cần mạng.">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<!-- KaTeX: ưu tiên bản trong thư mục katex/ (chạy offline), thiếu thì tự lấy từ CDN -->
+<link rel="stylesheet" href="katex/katex.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css'">
+<style>
+:root{
+  --ink:#0f172a; --muted:#475569; --card:#ffffff;
+  --a:#ef4444; --b:#3b82f6; --c:#f59e0b; --d:#10b981; --e:#a855f7; --f:#ec4899;
+  --gold:#fbbf24; --ok:#16a34a; --bad:#dc2626;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,#38bdf8 0%,#7dd3fc 35%,#e0f2fe 75%);
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;cursor:pointer}
+.hidden{display:none!important}
+#app{position:relative;height:100vh;display:flex;flex-direction:column}
+
+/* ---------- Thanh trên ---------- */
+.topbar{position:relative;z-index:5;display:flex;align-items:center;gap:16px;padding:10px 2.2vw;background:rgba(15,23,42,.82);color:#fff;box-shadow:0 4px 18px rgba(2,6,23,.25)}
+.brand{font-weight:900;letter-spacing:.06em;font-size:clamp(16px,1.5vw,26px);display:flex;align-items:center;gap:10px}
+.brand .logo{display:grid;place-items:center;width:1.7em;height:1.7em;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);font-size:.9em}
+.progress{margin-left:auto;display:flex;gap:10px;font-weight:700;font-size:clamp(14px,1.2vw,22px)}
+.chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:4px 12px;border-radius:999px;white-space:nowrap}
+.chip.okc{background:rgba(34,197,94,.25);border-color:rgba(134,239,172,.5)}
+.tools{display:flex;gap:8px}
+.tool{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:6px 12px;font-weight:700;font-size:clamp(13px,1vw,18px)}
+.tool:hover{background:rgba(255,255,255,.24)}
+
+/* ---------- Đấu trường ---------- */
+#arena{position:relative;flex:1 1 auto;min-height:32vh;display:grid;grid-template-columns:1fr auto 1fr;padding:0 3vw;overflow:hidden}
+.sun{position:absolute;top:6%;left:46%;width:9vh;height:9vh;border-radius:50%;background:radial-gradient(circle,#fff7cc 0 30%,#fde047 55%,rgba(253,224,71,0) 72%)}
+.cloud{position:absolute;height:5vh;width:16vh;background:#fff;border-radius:999px;opacity:.85;animation:drift linear infinite}
+.cloud::before,.cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
+.cloud::before{width:7vh;height:7vh;left:2.5vh;top:-3.5vh}
+.cloud::after{width:5vh;height:5vh;left:8vh;top:-2.2vh}
+.cloud.c1{top:16%;animation-duration:70s;animation-delay:-10s}
+.cloud.c2{top:30%;animation-duration:95s;animation-delay:-50s;transform:scale(.7)}
+.cloud.c3{top:10%;animation-duration:120s;animation-delay:-80s;transform:scale(.55)}
+@keyframes drift{from{left:-20vh}to{left:110%}}
+.hills{position:absolute;left:0;right:0;bottom:18%;height:22%;
+  background:radial-gradient(60% 120% at 15% 100%,#86efac 0 60%,transparent 61%),radial-gradient(50% 110% at 60% 100%,#4ade80 0 60%,transparent 61%),radial-gradient(55% 120% at 100% 100%,#86efac 0 60%,transparent 61%);opacity:.9}
+.ground{position:absolute;left:0;right:0;bottom:0;height:20%;background:linear-gradient(180deg,#22c55e 0%,#16a34a 45%,#15803d 100%);border-top:6px solid #4ade80}
+.ground::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 22px,transparent 22px 60px)}
+
+.side{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;min-height:0;padding:12px 0 3.2vh}
+.hud{background:rgba(255,255,255,.92);border-radius:18px;padding:10px 18px 12px;box-shadow:0 5px 0 rgba(15,23,42,.12),0 12px 30px rgba(2,6,23,.18);text-align:center}
+.hud-title{font-weight:900;letter-spacing:.05em;font-size:clamp(15px,1.45vw,26px);margin-bottom:6px;white-space:nowrap}
+.hud-title small{font-weight:700;letter-spacing:0;color:var(--muted);font-size:.72em;margin-left:6px}
+.shields{display:flex;gap:6px;justify-content:center}
+.shield{width:clamp(26px,2.5vw,46px);height:auto;color:#3b82f6;filter:drop-shadow(0 2px 0 rgba(0,0,0,.15));transition:color .3s,opacity .3s}
+.shield.broken{color:#cbd5e1;opacity:.45}
+.shield.breaking{animation:sbreak .7s ease-out}
+@keyframes sbreak{0%{transform:scale(1)}30%{transform:scale(1.5) rotate(-15deg);color:#f87171}60%{transform:scale(.8) rotate(10deg)}100%{transform:scale(1)}}
+
+/* Bảng các đội */
+.teams{display:flex;flex-direction:column;gap:5px;text-align:left}
+.teams.g2{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+.teams.g2 .team-row{font-size:clamp(12px,1.05vw,19px);grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"d n m" ". s s";row-gap:0;padding:2px 8px}
+.teams.g2 .dot{grid-area:d}.teams.g2 .tn{grid-area:n}.teams.g2 .tdmg{grid-area:m;min-width:0}.teams.g2 .ts{grid-area:s}
+.hud.compact{padding:6px 10px 8px}
+.team-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:3px 10px;border-radius:12px;border:3px solid transparent;
+  font-weight:800;font-size:clamp(13px,1.2vw,21px);transition:background .3s,border-color .3s}
+.team-row .dot{width:.85em;height:.85em;border-radius:50%;background:var(--tc);box-shadow:0 0 0 2px #fff,0 0 0 3px var(--tc)}
+.team-row .tn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-row .ts{display:flex;gap:2px}
+.team-row .ts .shield{width:clamp(15px,1.35vw,25px)}
+.team-row .tdmg{font-variant-numeric:tabular-nums;color:#b45309;min-width:3.6em;text-align:right}
+.team-row.active{border-color:var(--tc);background:rgba(254,243,199,.9)}
+.team-row.out{opacity:.4;text-decoration:line-through}
+
+.hpbar{position:relative;width:clamp(220px,25vw,470px);height:clamp(24px,2.5vw,38px);background:#1e293b;border:3px solid #0f172a;border-radius:999px;overflow:hidden}
+.hp-lag,.hp-fill{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:999px}
+.hp-lag{background:#fde68a;transition:width .6s ease .45s}
+.hp-fill{background:linear-gradient(180deg,#86efac,#22c55e 55%,#15803d);transition:width .35s ease-out,background .3s}
+.hp-fill.mid{background:linear-gradient(180deg,#fde68a,#f59e0b 55%,#b45309)}
+.hp-fill.low{background:linear-gradient(180deg,#fca5a5,#ef4444 55%,#991b1b)}
+.hp-text{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:900;font-size:clamp(12px,1.15vw,20px);text-shadow:0 2px 0 rgba(0,0,0,.55);letter-spacing:.03em}
+
+.stage{position:relative;flex:1 1 0;min-height:0;width:100%;display:flex;justify-content:center;align-items:flex-end;margin-top:8px}
+#heroMover{height:100%;max-height:30vh;display:flex;align-items:flex-end;justify-content:center}
+.kwrap{position:relative;height:82%;flex:none;display:flex;align-items:flex-end;margin:0 -2%;transition:height .35s ease}
+.kwrap.main,.kwrap.active{height:100%;z-index:2}
+#heroMover.n3{max-height:26vh} #heroMover.n3 .kwrap{height:84%} #heroMover.n3 .kwrap.active{height:100%}
+#heroMover.n4{max-height:22vh} #heroMover.n4 .kwrap{height:82%} #heroMover.n4 .kwrap.active{height:100%}
+.kwrap .knight{height:100%;width:auto;transform-origin:50% 100%;animation:kbob 1.7s ease-in-out infinite}
+.kwrap:nth-child(2) .knight{animation-delay:-.6s}
+.kwrap:nth-child(3) .knight{animation-delay:-1.1s}
+.kwrap:nth-child(4) .knight{animation-delay:-.3s}
+@keyframes kbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%)}}
+.kwrap.active .knight{filter:drop-shadow(0 0 10px var(--tc))}
+.kwrap.out{filter:grayscale(1);opacity:.35}
+.ktag{position:absolute;left:50%;top:-1.5em;transform:translateX(-50%);background:var(--tc);color:#fff;font-weight:900;font-size:clamp(11px,.95vw,17px);
+  padding:2px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 3px 0 rgba(0,0,0,.2)}
+.kwrap.active .ktag{animation:tagBounce .7s ease-in-out infinite alternate}
+@keyframes tagBounce{to{transform:translateX(-50%) translateY(-5px)}}
+.charging .knight{filter:drop-shadow(0 0 14px #fde047) drop-shadow(0 0 6px #fff)!important}
+
+#bossWrap{height:100%;max-height:40vh;display:flex;align-items:flex-end}
+#bossMover{height:100%;display:flex;align-items:flex-end;transform-origin:50% 100%}
+#boss{height:100%;width:auto;transform-origin:50% 96%;animation:squish 1.5s ease-in-out infinite}
+@keyframes squish{0%,100%{transform:scale(1,1)}50%{transform:scale(1.045,.95)}}
+#boss .angry-only{opacity:0;transition:opacity .15s}
+#bossWrap.angry .angry-only{opacity:1}
+#bossWrap.angry .calm-only{opacity:0}
+#bossWrap.hurt #boss{filter:brightness(2.2) saturate(.4)}
+#bossWrap.hurt .calm-only{opacity:0}
+#bossWrap.hurt .hurt-only{opacity:1}
+#boss .hurt-only{opacity:0}
+#bossWrap.dead{visibility:hidden}
+
+.vs{position:relative;z-index:2;align-self:center;font-weight:900;font-style:italic;font-size:clamp(34px,5vw,90px);color:#fff;
+  -webkit-text-stroke:3px #0f172a;text-shadow:0 6px 0 #0f172a;transform:rotate(-8deg);padding:0 1vw;margin-top:-6vh;opacity:.95}
+
+#banner{position:absolute;left:50%;top:44%;z-index:6;transform:translate(-50%,-50%) scale(.6);opacity:0;pointer-events:none;
+  font-weight:900;font-size:clamp(40px,6.5vw,120px);letter-spacing:.04em;color:#fff;-webkit-text-stroke:4px #0f172a;text-shadow:0 8px 0 #0f172a;white-space:nowrap}
+#banner.small{font-size:clamp(30px,4.5vw,84px)}
+#banner.show{animation:bannerIn 1.1s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes bannerIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(-6deg)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.08) rotate(-3deg)}75%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-3deg)}100%{opacity:0;transform:translate(-50%,-60%) scale(1) rotate(-3deg)}}
+
+/* Hộp lời giải */
+#reveal{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:7;width:min(40%,780px);max-height:calc(100% - 20px);
+  display:flex;flex-direction:column;background:#fff;border-radius:20px;padding:14px 18px 16px;
+  box-shadow:0 6px 0 rgba(15,23,42,.15),0 18px 40px rgba(2,6,23,.3);border:4px solid #e2e8f0;animation:pop .35s cubic-bezier(.2,1.5,.4,1)}
+#reveal.wide{position:fixed;top:68px;bottom:14px;width:min(92%,1400px);max-height:none;z-index:30}
+#reveal.wide .rv-body{font-size:clamp(16px,1.6vw,28px)}
+#reveal.wide .rv-body img.qimg.fig{max-height:40vh}
+#reveal.okb{border-color:#4ade80}
+#reveal.stealb{border-color:#f59e0b;background:#fffbeb;width:min(60%,980px)}
+.steal{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.steal-btn{border:0;border-radius:14px;padding:.45em 1em;font-weight:900;font-size:clamp(16px,1.5vw,28px);color:#fff;background:var(--tc);box-shadow:0 5px 0 rgba(0,0,0,.25)}
+.steal-btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.steal-btn.none{background:#e2e8f0;color:#334155}
+.steal-btn kbd{font:inherit;font-size:.6em;background:rgba(255,255,255,.3);border-radius:6px;padding:0 .4em;margin-left:.45em}
+#reveal.badb{border-color:#f87171}
+@keyframes pop{from{transform:translateX(-50%) scale(.85);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
+.rv-title{font-weight:900;font-size:clamp(18px,1.7vw,30px);margin-bottom:6px}
+.rv-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:.15em 0 .45em;font-size:clamp(15px,1.35vw,24px);line-height:1.45;white-space:pre-line}
+.rv-body .lbl{font-weight:800;color:var(--muted)}
+.rv-foot{display:flex;justify-content:flex-end;margin-top:10px}
+
+.btn-big{border:0;border-radius:16px;padding:.55em 1.2em;font-weight:900;font-size:clamp(16px,1.5vw,28px);color:#fff;
+  background:linear-gradient(180deg,#60a5fa,#2563eb);box-shadow:0 6px 0 #1e40af;transition:transform .08s,box-shadow .08s}
+.btn-big:active{transform:translateY(4px);box-shadow:0 2px 0 #1e40af}
+.btn-big.go{background:linear-gradient(180deg,#fbbf24,#f59e0b);box-shadow:0 6px 0 #b45309;color:#1f2937}
+.btn-big.ghost{background:#fff;color:#1e293b;box-shadow:0 6px 0 #cbd5e1;border:2px solid #e2e8f0}
+
+/* ---------- Khung câu hỏi ---------- */
+#qpanel{position:relative;z-index:4;flex:none;max-height:calc(100vh - 56px - 32vh);overflow-y:auto;background:rgba(255,255,255,.96);padding:1.3vh 3vw 2.2vh;
+  box-shadow:0 -10px 30px rgba(2,6,23,.18);border-top:5px solid #0f172a}
+.timer{position:sticky;top:-1.3vh;margin:-1.3vh -3vw 0;height:9px;background:#e2e8f0;z-index:2}
+#timerFill{height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#a3e635);transform-origin:left;transition:background .3s}
+#timerFill.warn{background:linear-gradient(90deg,#ef4444,#f97316)}
+.qhead{display:flex;align-items:center;gap:12px;margin:.6vh 0 .8vh}
+.qbadge{background:#0f172a;color:#fff;font-weight:900;border-radius:12px;padding:4px 14px;font-size:clamp(14px,1.25vw,22px);white-space:nowrap}
+.qtype{background:#f1f5f9;color:#334155;font-weight:800;border-radius:12px;padding:4px 12px;font-size:clamp(12px,1.05vw,19px);white-space:nowrap}
+.turn{color:#fff;background:var(--tc);font-weight:900;border-radius:12px;padding:4px 14px;font-size:clamp(14px,1.25vw,22px);white-space:nowrap;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.timenum{margin-left:auto;font-weight:900;font-size:clamp(18px,1.8vw,34px);background:#f1f5f9;border-radius:14px;padding:2px 14px;min-width:3.2em;text-align:center;font-variant-numeric:tabular-nums}
+.timenum.warn{background:#fee2e2;color:#b91c1c;animation:beat .5s ease-in-out infinite alternate}
+@keyframes beat{to{transform:scale(1.12)}}
+.qtext{font-weight:700;font-size:clamp(20px,2.35vw,44px);line-height:1.35;white-space:pre-line;margin-bottom:1.4vh;padding-bottom:.35em;max-height:30vh;overflow-y:auto;overflow-x:hidden}
+.qtext.long{font-size:clamp(17px,1.85vw,36px)}
+.qtext .st-lbl{display:inline-block;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;padding:0 .35em;margin-right:.25em}
+img.qimg{max-width:100%;vertical-align:middle;border-radius:6px;background:#fff}
+.qtext img.qimg{max-height:22vh}
+img.qimg.fig{float:right;max-width:38%;margin:0 0 .4em 1.2vw;border:2px solid #e2e8f0}
+.qtext img.qimg.fig{max-height:28vh}
+.short-ans,.judge,.short-hint{clear:both}
+.ans img.qimg{max-height:14vh}
+.rv-body img.qimg{max-height:24vh}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:1.2vh 1.4vw}
+.ans{display:flex;align-items:center;gap:.7em;text-align:left;background:#f8fafc;border:3px solid #e2e8f0;border-radius:18px;
+  padding:1vh 1vw;min-height:7.5vh;font-size:clamp(18px,2vw,38px);font-weight:600;color:var(--ink);
+  box-shadow:0 5px 0 #cbd5e1;transition:transform .08s,box-shadow .08s,background .2s,border-color .2s,opacity .2s}
+.ans:hover{background:#fff;border-color:#94a3b8}
+.ans:active{transform:translateY(3px);box-shadow:0 2px 0 #cbd5e1}
+.ans .key{flex:none;display:grid;place-items:center;min-width:1.7em;height:1.7em;padding:0 .2em;border-radius:12px;color:#fff;font-weight:900;box-shadow:inset 0 -4px 0 rgba(0,0,0,.2)}
+.ans .txt{flex:1;min-width:0}
+.ans:nth-child(1) .key{background:var(--a)}.ans:nth-child(2) .key{background:var(--b)}
+.ans:nth-child(3) .key{background:var(--c)}.ans:nth-child(4) .key{background:var(--d)}
+.ans:nth-child(5) .key{background:var(--e)}.ans:nth-child(6) .key{background:var(--f)}
+.answers.tf .ans{justify-content:center;font-weight:900;font-size:clamp(22px,2.6vw,46px)}
+.answers.tf .ans .txt{flex:none}
+.answers.tf .ans:nth-child(1) .key{background:var(--ok)}
+.answers.tf .ans:nth-child(2) .key{background:var(--bad)}
+.answers.locked .ans,.answers.locked .jbtn{pointer-events:none}
+.ans.picked{border-color:#0f172a;background:#e0f2fe}
+.ans.correct{border-color:var(--ok);background:#dcfce7;box-shadow:0 5px 0 #16a34a;animation:glow 1s ease-in-out infinite alternate}
+.ans.wrong{border-color:var(--bad);background:#fee2e2;box-shadow:0 5px 0 #b91c1c;animation:nope .45s}
+.ans.dim{opacity:.4}
+@keyframes glow{from{box-shadow:0 5px 0 #16a34a,0 0 0 0 rgba(34,197,94,0)}to{box-shadow:0 5px 0 #16a34a,0 0 0 8px rgba(34,197,94,.35)}}
+@keyframes nope{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+/* Trả lời ngắn */
+.answers.short{display:block}
+.short-hint{color:var(--muted);font-weight:700;font-size:clamp(15px,1.4vw,24px);margin-bottom:1vh}
+.short-ans{display:inline-block;font-size:clamp(22px,2.6vw,48px);font-weight:900;background:#fef9c3;border:3px dashed #f59e0b;border-radius:16px;padding:.2em .8em;margin-bottom:1.2vh;animation:pop2 .35s cubic-bezier(.2,1.5,.4,1)}
+.short-ans .lbl{font-size:.55em;color:#92400e;margin-right:.4em}
+@keyframes pop2{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+.judge{display:flex;flex-wrap:wrap;gap:1.2vw}
+.jbtn{border:0;border-radius:16px;padding:.5em 1.1em;font-weight:900;font-size:clamp(17px,1.8vw,32px);color:#fff;box-shadow:0 6px 0 rgba(0,0,0,.25)}
+.jbtn kbd{font:inherit;font-size:.6em;background:rgba(255,255,255,.25);border-radius:6px;padding:0 .4em;margin-left:.4em}
+.jbtn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.jbtn.show{background:linear-gradient(180deg,#60a5fa,#2563eb)}
+.jbtn.ok{background:linear-gradient(180deg,#4ade80,#16a34a)}
+.jbtn.bad{background:linear-gradient(180deg,#f87171,#dc2626)}
+.qpanel-in{animation:slideUp .4s cubic-bezier(.2,1.2,.4,1)}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.katex{font-size:1.05em}
+.katex-display{margin:.15em 0}
+
+/* ---------- Hiệu ứng ---------- */
+#fx{position:fixed;inset:0;z-index:70;pointer-events:none}
+.orb{position:fixed;left:0;top:0;width:58px;height:58px;border-radius:50%;z-index:42;pointer-events:none;will-change:transform}
+.orb-hero{background:radial-gradient(circle,#fff 0 22%,#fde047 42%,#f97316 62%,rgba(249,115,22,0) 72%);box-shadow:0 0 34px 14px rgba(253,224,71,.65)}
+.orb-slime{width:64px;height:64px;background:radial-gradient(circle at 35% 35%,#ecfdf5 0 12%,#34d399 38%,#059669 62%,#065f46 72%,rgba(6,95,70,0) 74%);box-shadow:0 0 22px 6px rgba(16,185,129,.55)}
+#flash{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0;background:#fff}
+#vignette{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(239,68,68,0) 45%,rgba(220,38,38,.75) 100%)}
+.dmg{position:fixed;z-index:60;pointer-events:none;font-weight:900;font-size:clamp(40px,5vw,96px);color:#fde047;-webkit-text-stroke:3px #7c2d12;
+  text-shadow:0 6px 0 #7c2d12;transform:translate(-50%,-50%);animation:dmgUp 1.3s ease-out forwards}
+@keyframes dmgUp{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}15%{opacity:1;transform:translate(-50%,-60%) scale(1.25)}100%{opacity:0;transform:translate(-50%,-190%) scale(1)}}
+
+/* ---------- Lớp phủ ---------- */
+.overlay{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(15,23,42,.55);backdrop-filter:blur(4px)}
+.card{width:min(880px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:28px;padding:clamp(20px,3vw,44px);text-align:center;
+  box-shadow:0 10px 0 rgba(15,23,42,.2),0 30px 80px rgba(2,6,23,.45);animation:cardIn .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes cardIn{from{transform:translateY(30px) scale(.94);opacity:0}to{transform:none;opacity:1}}
+.title{margin:0;font-weight:900;font-size:clamp(30px,4.2vw,72px);line-height:1.05;letter-spacing:.02em;
+  background:linear-gradient(180deg,#f59e0b,#ef4444);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 rgba(15,23,42,.18))}
+.subtitle{color:var(--muted);font-size:clamp(15px,1.5vw,24px);margin:.5em 0 1em;font-weight:600}
+.rules{display:grid;gap:10px;text-align:left;margin:0 auto 18px;max-width:660px}
+.rule{display:flex;gap:12px;align-items:center;background:#f8fafc;border:2px solid #e2e8f0;border-radius:16px;padding:10px 14px;font-size:clamp(14px,1.3vw,22px);font-weight:600}
+.rule .ico{font-size:1.4em;flex:none}
+.seg{display:inline-flex;flex-wrap:wrap;justify-content:center;background:#f1f5f9;border-radius:16px;padding:5px;gap:5px;margin:0 0 16px}
+.seg button{border:0;background:transparent;padding:8px 18px;border-radius:12px;font-weight:800;font-size:clamp(14px,1.3vw,21px);color:#334155}
+.seg button.on{background:#fff;color:#0f172a;box-shadow:0 3px 0 #cbd5e1,0 0 0 2px #f59e0b}
+.stats{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:0 0 20px}
+.stat{background:#f1f5f9;border-radius:999px;padding:6px 16px;font-weight:800;font-size:clamp(14px,1.25vw,21px)}
+.actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.keys{margin-top:16px;color:var(--muted);font-size:clamp(12px,1vw,16px);line-height:1.8}
+.keys kbd{display:inline-block;background:#f1f5f9;border:1px solid #cbd5e1;border-bottom-width:3px;border-radius:6px;padding:0 6px;font-family:inherit;font-weight:700;color:#334155}
+.stars{font-size:clamp(36px,4.5vw,72px);letter-spacing:.1em;margin:.1em 0 .2em}
+.stars .off{filter:grayscale(1);opacity:.3}
+.rank{display:grid;gap:8px;max-width:680px;margin:0 auto 20px}
+.rank-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto auto;gap:14px;align-items:center;padding:8px 16px;border-radius:16px;
+  background:#f8fafc;border:3px solid var(--tc);font-weight:800;font-size:clamp(15px,1.5vw,25px);text-align:left}
+.rank-row:first-child{background:#fef9c3}
+.rank-row .medal{font-size:1.4em}
+.rank-row .rn{color:var(--tc)}
+
+/* Soạn câu hỏi */
+.modal{width:min(1320px,100%);height:min(94vh,960px);background:#fff;border-radius:24px;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 30px 80px rgba(2,6,23,.45);animation:cardIn .35s ease-out;position:relative}
+.modal-head{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid #e2e8f0;flex-wrap:wrap}
+.modal-head h2{margin:0;font-size:clamp(18px,1.6vw,26px)}
+.x{margin-left:auto;border:0;background:#f1f5f9;border-radius:10px;width:38px;height:38px;font-size:18px}
+.modal-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:18px;padding:14px 20px}
+.ed-left{display:flex;flex-direction:column;min-height:0;gap:10px}
+.tabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tab{border:0;background:#f1f5f9;border-radius:10px;padding:8px 14px;font-weight:800;color:#334155}
+.tab.on{background:#0f172a;color:#fff}
+.btn-import{margin-left:auto;border:0;border-radius:10px;padding:8px 14px;font-weight:800;background:linear-gradient(180deg,#34d399,#059669);color:#fff;box-shadow:0 3px 0 #047857}
+#edText{flex:1;min-height:0;width:100%;resize:none;border:2px solid #cbd5e1;border-radius:14px;padding:12px 14px;
+  font-family:Consolas,"Cascadia Mono","Courier New",monospace;font-size:14.5px;line-height:1.55;color:#0f172a;background:#f8fafc}
+#edText:focus{outline:none;border-color:#3b82f6;background:#fff}
+#edPreview{flex:1;min-height:0;overflow:auto;border:2px solid #cbd5e1;border-radius:14px;padding:12px 14px;background:#f8fafc}
+.pv-q{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:10px 14px;margin-bottom:10px;font-size:16px;line-height:1.5}
+.pv-h{font-weight:900;color:#0f172a;margin-bottom:4px}
+.pv-h .pv-t{font-weight:700;color:#475569;background:#f1f5f9;border-radius:8px;padding:1px 8px;margin-left:6px;font-size:13px}
+.pv-stem{white-space:pre-line}
+.pv-opts{margin:6px 0 0;padding-left:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 16px}
+.pv-opts li{padding:2px 6px;border-radius:8px}
+.pv-opts li.ok{background:#dcfce7;font-weight:700}
+.pv-opts li b{margin-right:4px}
+.pv-ans{margin-top:6px;font-weight:700;color:#166534}
+.pv-exp{margin-top:6px;color:#475569;white-space:pre-line;font-size:14.5px;border-top:1px dashed #e2e8f0;padding-top:6px}
+.pv-q img.qimg{max-height:160px}
+.pv-err{background:#fef2f2;border-color:#fecaca}
+.ed-status{font-size:14px;line-height:1.5;max-height:8em;overflow:auto;border-radius:12px;padding:8px 12px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.ed-status.err{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.imp{border:2px solid #34d399;background:#ecfdf5;border-radius:14px;padding:10px 14px;font-size:14.5px;line-height:1.5}
+.imp h3{margin:0 0 4px;font-size:16px}
+.imp .warn{color:#9a3412;max-height:7em;overflow:auto;margin:4px 0}
+.imp .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.drop-hint{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:rgba(16,185,129,.15);border:4px dashed #10b981;border-radius:24px;font-size:28px;font-weight:900;color:#065f46;pointer-events:none}
+.ed-right{overflow:auto;display:flex;flex-direction:column;gap:11px;min-height:0}
+.field label{display:block;font-weight:700;font-size:14px;margin-bottom:4px;color:#334155}
+.field input,.field select{width:100%;border:2px solid #cbd5e1;border-radius:10px;padding:7px 10px;font:inherit;font-size:15px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tnames{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tnames label{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px}
+.tnames input{width:100%;border:2px solid var(--tc);border-radius:10px;padding:5px 8px;font:inherit;font-size:14px}
+.chk{display:flex;gap:8px;align-items:center;font-weight:600;font-size:15px}
+.chk input{width:18px;height:18px}
+.hint{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.55;color:#334155}
+.hint pre{margin:6px 0 0;white-space:pre-wrap;font-family:Consolas,"Courier New",monospace;font-size:12.5px;background:#fff;border-radius:8px;padding:8px;border:1px solid #e2e8f0}
+.modal-foot{display:flex;gap:10px;align-items:center;padding:12px 20px;border-top:1px solid #e2e8f0;flex-wrap:wrap}
+.modal-foot .sp{flex:1}
+.btn{border:0;border-radius:12px;padding:10px 18px;font-weight:800;font-size:15px}
+.btn.primary{background:#2563eb;color:#fff}
+.btn.primary:hover{background:#1d4ed8}
+.btn.ghost{background:#f1f5f9;color:#0f172a}
+.btn.ghost:hover{background:#e2e8f0}
+.btn.green{background:#059669;color:#fff}
+
+@media (max-width:820px){
+  .answers{grid-template-columns:1fr}
+  .modal-body{grid-template-columns:1fr}
+  .brand .txt{display:none}
+  #reveal{width:calc(100% - 32px)}
+  .vs{display:none}
+  #arena{grid-template-columns:1fr 1fr;padding:0 16px}
+  .hud{padding:8px 10px}
+  .hpbar{width:38vw}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="knight" viewBox="0 0 100 130">
+      <ellipse cx="50" cy="124" rx="30" ry="5" fill="rgba(0,0,0,.2)"/>
+      <rect x="35" y="98" width="11" height="22" rx="4" fill="#475569" stroke="#1e293b" stroke-width="2"/>
+      <rect x="54" y="98" width="11" height="22" rx="4" fill="#475569" stroke="#1e293b" stroke-width="2"/>
+      <path d="M30 62 Q18 96 26 110 L74 110 Q82 96 70 62Z" fill="var(--cape,#dc2626)" stroke="#1e293b" stroke-width="2.5"/>
+      <rect x="28" y="60" width="44" height="44" rx="14" fill="var(--armor,#60a5fa)" stroke="#1e293b" stroke-width="3"/>
+      <path d="M40 66 Q50 72 60 66" stroke="rgba(255,255,255,.55)" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <rect x="29.5" y="88" width="41" height="7" fill="#78350f"/>
+      <rect x="45" y="86.5" width="10" height="10" rx="2" fill="#fbbf24" stroke="#1e293b" stroke-width="1.5"/>
+      <g transform="rotate(-28 80 82)">
+        <rect x="77" y="26" width="8" height="54" rx="2.5" fill="#e2e8f0" stroke="#1e293b" stroke-width="2.5"/>
+        <path d="M81 30 V76" stroke="#fff" stroke-width="2"/>
+        <rect x="69" y="78" width="24" height="7" rx="3" fill="#f59e0b" stroke="#1e293b" stroke-width="2.5"/>
+        <rect x="78.5" y="85" width="5" height="12" rx="2" fill="#78350f" stroke="#1e293b" stroke-width="1.5"/>
+      </g>
+      <circle cx="74" cy="84" r="7" fill="#cbd5e1" stroke="#1e293b" stroke-width="2.5"/>
+      <path d="M6 64 h30 v18 q0 16 -15 23 q-15 -7 -15 -23z" fill="var(--accent,#fbbf24)" stroke="#1e293b" stroke-width="3" stroke-linejoin="round"/>
+      <text x="21" y="90" font-size="20" font-weight="900" text-anchor="middle" fill="#1e293b" font-family="Georgia,'Times New Roman',serif">π</text>
+      <path d="M50 18 C46 4 62 -2 76 8 C66 7 60 11 56 20 Z" fill="var(--cape,#dc2626)" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/>
+      <circle cx="50" cy="40" r="24" fill="#cbd5e1" stroke="#1e293b" stroke-width="3"/>
+      <path d="M32 30 Q50 18 68 30" stroke="#fff" stroke-width="3" fill="none" opacity=".7" stroke-linecap="round"/>
+      <rect x="33" y="36" width="34" height="11" rx="5.5" fill="#1e293b"/>
+      <circle cx="44" cy="41.5" r="2.8" fill="#fff"/><circle cx="58" cy="41.5" r="2.8" fill="#fff"/>
+      <path d="M50 52 v10" stroke="#94a3b8" stroke-width="3"/>
+    </symbol>
+    <symbol id="shieldIco" viewBox="0 0 40 46">
+      <path d="M20 2 L37 8 V22 C37 34 29 41 20 44 C11 41 3 34 3 22 V8 Z" fill="currentColor" stroke="#1e3a8a" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M20 8 L31 12 V22 C31 30 26 35 20 37Z" fill="rgba(255,255,255,.4)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><span class="logo">⚔</span><span class="txt">QUYẾT CHIẾN VỚI BOSS</span></div>
+    <div class="progress">
+      <span id="qCounter" class="chip">Lượt 0/0</span>
+      <span id="okCounter" class="chip okc">✔ 0 đúng</span>
+    </div>
+    <div class="tools">
+      <button id="btnEdit" class="tool" title="Soạn câu hỏi, nhập file Word, cài đặt (E)">✎ Câu hỏi</button>
+      <button id="btnMute" class="tool" title="Bật/tắt âm thanh (M)">🔊</button>
+      <button id="btnFull" class="tool" title="Toàn màn hình (F)">⛶</button>
+    </div>
+  </header>
+
+  <main id="arena">
+    <div class="sun"></div>
+    <div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+    <div class="hills"></div>
+    <div class="ground"></div>
+
+    <section class="side hero-side">
+      <div id="heroHud" class="hud"></div>
+      <div class="stage"><div id="heroMover"></div></div>
+    </section>
+
+    <div class="vs">VS</div>
+
+    <section class="side boss-side">
+      <div class="hud">
+        <div class="hud-title">SLIME KING <small>Vua Slime</small></div>
+        <div class="hpbar"><div id="hpLag" class="hp-lag"></div><div id="hpFill" class="hp-fill"></div><div id="hpText" class="hp-text">1000 / 1000 HP</div></div>
+      </div>
+      <div class="stage">
+        <div id="bossWrap">
+          <div id="bossMover">
+            <svg id="boss" viewBox="0 0 300 292" aria-label="Boss Slime King">
+              <defs>
+                <radialGradient id="slimeG" cx="38%" cy="32%" r="78%">
+                  <stop offset="0" stop-color="#bbf7d0"/><stop offset=".42" stop-color="#34d399"/><stop offset="1" stop-color="#047857"/>
+                </radialGradient>
+                <linearGradient id="crownG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fef08a"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
+              </defs>
+              <ellipse cx="150" cy="280" rx="122" ry="11" fill="rgba(0,0,0,.22)"/>
+              <path d="M28 272 C6 272 4 236 24 218 C30 134 88 70 150 70 C212 70 270 134 276 218 C296 236 294 272 272 272 Z" fill="url(#slimeG)" stroke="#065f46" stroke-width="5"/>
+              <path d="M62 270 q8 16 16 0 M212 270 q7 13 14 0" fill="#10b981" stroke="#065f46" stroke-width="4"/>
+              <ellipse cx="98" cy="124" rx="30" ry="15" fill="#fff" opacity=".55" transform="rotate(-32 98 124)"/>
+              <circle cx="128" cy="100" r="6" fill="#fff" opacity=".65"/>
+              <ellipse cx="84" cy="212" rx="13" ry="7" fill="#f472b6" opacity=".5"/>
+              <ellipse cx="216" cy="212" rx="13" ry="7" fill="#f472b6" opacity=".5"/>
+              <g>
+                <ellipse cx="112" cy="172" rx="21" ry="25" fill="#fff" stroke="#064e3b" stroke-width="4"/>
+                <ellipse cx="188" cy="172" rx="21" ry="25" fill="#fff" stroke="#064e3b" stroke-width="4"/>
+                <g class="calm-only"><circle cx="117" cy="177" r="10" fill="#0f172a"/><circle cx="121" cy="171" r="3.5" fill="#fff"/>
+                  <circle cx="183" cy="177" r="10" fill="#0f172a"/><circle cx="187" cy="171" r="3.5" fill="#fff"/></g>
+                <g class="angry-only"><circle cx="118" cy="180" r="8" fill="#b91c1c"/><circle cx="182" cy="180" r="8" fill="#b91c1c"/>
+                  <path d="M86 140 L136 160" stroke="#064e3b" stroke-width="9" stroke-linecap="round"/>
+                  <path d="M214 140 L164 160" stroke="#064e3b" stroke-width="9" stroke-linecap="round"/></g>
+                <g class="hurt-only"><path d="M100 162 L124 182 M124 162 L100 182 M176 162 L200 182 M200 162 L176 182" stroke="#0f172a" stroke-width="6" stroke-linecap="round"/></g>
+              </g>
+              <path class="calm-only" d="M124 218 Q150 240 176 218" fill="none" stroke="#064e3b" stroke-width="6" stroke-linecap="round"/>
+              <g class="angry-only">
+                <path d="M114 228 Q150 196 186 228 Q150 252 114 228Z" fill="#7f1d1d" stroke="#064e3b" stroke-width="5" stroke-linejoin="round"/>
+                <path d="M128 216 l6 10 l6 -12 M160 214 l6 12 l6 -10" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+              </g>
+              <ellipse class="hurt-only" cx="150" cy="228" rx="14" ry="10" fill="#7f1d1d" stroke="#064e3b" stroke-width="4"/>
+              <g transform="rotate(-8 150 60)">
+                <path d="M104 82 L96 32 L124 54 L150 18 L176 54 L204 32 L196 82 Z" fill="url(#crownG)" stroke="#92400e" stroke-width="4" stroke-linejoin="round"/>
+                <rect x="102" y="70" width="96" height="12" rx="3" fill="#f59e0b" stroke="#92400e" stroke-width="3"/>
+                <circle cx="96" cy="30" r="5" fill="#fde047" stroke="#92400e" stroke-width="2"/>
+                <circle cx="150" cy="16" r="6" fill="#fde047" stroke="#92400e" stroke-width="2"/>
+                <circle cx="204" cy="30" r="5" fill="#fde047" stroke="#92400e" stroke-width="2"/>
+                <circle cx="150" cy="56" r="8" fill="#ef4444" stroke="#7f1d1d" stroke-width="2.5"/>
+                <circle cx="124" cy="64" r="5" fill="#3b82f6" stroke="#1e3a8a" stroke-width="2"/>
+                <circle cx="176" cy="64" r="5" fill="#3b82f6" stroke="#1e3a8a" stroke-width="2"/>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="banner"></div>
+
+    <div id="reveal" class="hidden">
+      <div id="rvTitle" class="rv-title"></div>
+      <div id="rvBody" class="rv-body"></div>
+      <div id="stealBtns" class="steal hidden"></div>
+      <div class="rv-foot"><button id="btnNext" class="btn-big">Câu tiếp theo ▶</button></div>
+    </div>
+  </main>
+
+  <section id="qpanel">
+    <div class="timer"><div id="timerFill"></div></div>
+    <div class="qhead">
+      <span id="qBadge" class="qbadge">Câu 1</span>
+      <span id="qType" class="qtype hidden"></span>
+      <span id="turnChip" class="turn hidden"></span>
+      <span id="timeNum" class="timenum">30</span>
+    </div>
+    <div id="qText" class="qtext">Bấm <b>Bắt đầu</b> để vào trận!</div>
+    <div id="answers" class="answers locked"></div>
+  </section>
+</div>
+
+<!-- Màn hình bắt đầu -->
+<div id="intro" class="overlay">
+  <div class="card">
+    <h1 class="title">QUYẾT CHIẾN VỚI BOSS</h1>
+    <p id="introSub" class="subtitle">Cả lớp là Đội Hiệp Sĩ — hãy cùng nhau hạ gục Slime King!</p>
+    <div id="modeSeg" class="seg" role="group" aria-label="Chế độ chơi">
+      <button data-n="1">👥 Cả lớp</button><button data-n="2">2 đội</button><button data-n="3">3 đội</button><button data-n="4">4 đội</button>
+    </div>
+    <div id="rules" class="rules"></div>
+    <div class="stats" id="introStats"></div>
+    <div class="actions">
+      <button id="btnStart" class="btn-big go">⚔ Bắt đầu trận đấu</button>
+      <button id="btnEdit2" class="btn-big ghost">✎ Soạn / nhập đề Word</button>
+    </div>
+    <div class="keys">Phím tắt: <kbd>A</kbd>–<kbd>D</kbd> hoặc <kbd>1</kbd>–<kbd>4</kbd> chọn đáp án · Đúng/Sai: <kbd>Đ</kbd>=<kbd>1</kbd>, <kbd>S</kbd>=<kbd>2</kbd> ·
+      Trả lời ngắn: <kbd>Enter</kbd> xem đáp án, <kbd>1</kbd> đúng, <kbd>2</kbd> sai · <kbd>Space</kbd> câu tiếp · <kbd>F</kbd> toàn màn hình · <kbd>M</kbd> âm thanh</div>
+  </div>
+</div>
+
+<!-- Màn hình kết thúc -->
+<div id="endScreen" class="overlay hidden">
+  <div class="card">
+    <div id="endStars" class="stars"></div>
+    <h1 id="endTitle" class="title">CHIẾN THẮNG!</h1>
+    <p id="endSub" class="subtitle"></p>
+    <div id="endRank" class="rank"></div>
+    <div id="endStats" class="stats"></div>
+    <div class="actions">
+      <button id="btnAgain" class="btn-big go">↻ Chơi lại</button>
+      <button id="btnEdit3" class="btn-big ghost">✎ Soạn câu hỏi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Soạn câu hỏi -->
+<div id="editor" class="overlay hidden">
+  <div class="modal" role="dialog" aria-label="Soạn câu hỏi">
+    <div class="modal-head"><h2>✎ Soạn câu hỏi &amp; cài đặt trận đấu</h2><button id="edClose" class="x" title="Đóng (Esc)">✕</button></div>
+    <div class="modal-body">
+      <div class="ed-left">
+        <div class="tabs">
+          <button id="tabText" class="tab on">✎ Soạn dạng chữ</button>
+          <button id="tabPrev" class="tab">👁 Xem trước</button>
+          <button id="btnImport" class="btn-import" title="Đề Word có công thức MathType / Equation, đáp án gạch chân hoặc tô đỏ">📄 Nhập file Word (.docx)</button>
+          <input id="fileDocx" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
+        </div>
+        <div id="impBox" class="imp hidden"></div>
+        <textarea id="edText" spellcheck="false"></textarea>
+        <div id="edPreview" class="hidden"></div>
+        <div id="edStatus" class="ed-status"></div>
+      </div>
+      <div class="ed-right">
+        <div class="two">
+          <div class="field"><label for="sHp">Máu Boss (HP)</label><input id="sHp" type="number" min="50" step="50"></div>
+          <div class="field"><label for="sDmg">Sát thương / câu đúng</label><input id="sDmg" type="number" min="10" step="10"></div>
+          <div class="field"><label for="sShields">Số khiên mỗi đội</label><input id="sShields" type="number" min="1" max="10"></div>
+          <div class="field"><label for="sTime">Giây / câu (0 = không giới hạn)</label><input id="sTime" type="number" min="0" max="900"></div>
+        </div>
+        <div class="field"><label for="sTeams">Chế độ chơi</label>
+          <select id="sTeams"><option value="1">Cả lớp cùng chơi</option><option value="2">Chia 2 đội (lần lượt)</option><option value="3">Chia 3 đội (lần lượt)</option><option value="4">Chia 4 đội (lần lượt)</option></select></div>
+        <div class="field"><label>Tên các đội</label><div id="tNames" class="tnames"></div></div>
+        <label class="chk"><input id="sShufQ" type="checkbox"> Trộn thứ tự câu hỏi</label>
+        <label class="chk"><input id="sShufA" type="checkbox"> Trộn thứ tự phương án A–D</label>
+        <label class="chk"><input id="sSteal" type="checkbox"> Cho phép cướp lượt (khi chia đội)</label>
+        <div class="hint">
+          <b>Nhập file Word:</b> đề theo mẫu TN MIX (PHẦN I, II, III). Đáp án đúng <b>gạch chân</b> hoặc <b>tô đỏ</b> chữ A/B/C/D; ý Đúng ở phần II gạch chân a), b)…; phần III ghi “Đáp án: …” (hoặc “A. 22,4”). Công thức MathType, Equation 3.0 và công thức Word đều được chuyển tự động, không cần mạng.
+          <br><b>Tự gõ:</b>
+<pre>Câu 1: Đạo hàm của $y = x^2$ là
+A. $2x$
+B. $x$
+C. $2$
+D. $x^2$
+Đáp án: A
+Giải: $(x^n)' = n x^{n-1}$
+
+Câu 2 [Đúng/Sai]: Cho $f(x)=x^2$.
+a) $f(1)=1$
+b) $f(-1)=-1$
+Đáp án: Đ S
+
+Câu 3 [Trả lời ngắn]: $2^{10}$ bằng?
+Đáp án: 1024</pre>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button id="edReset" class="btn ghost">Khôi phục câu mẫu</button>
+      <span class="sp"></span>
+      <button id="edCancel" class="btn ghost">Huỷ</button>
+      <button id="edSave" class="btn primary">Lưu &amp; về màn hình bắt đầu</button>
+    </div>
+    <div id="dropHint" class="drop-hint hidden">Thả file Word (.docx) vào đây</div>
+  </div>
+</div>
+
+<div id="flash"></div>
+<div id="vignette"></div>
+<canvas id="fx"></canvas>
+
+<script type="text/plain" id="defaultQuestions">
+Câu 1: Đạo hàm của hàm số $y = x^3 - 3x^2 + 2$ là
+A. $y' = 3x^2 - 6x$
+B. $y' = 3x^2 - 6x + 2$
+C. $y' = x^2 - 6x$
+D. $y' = 3x^2 - 3x$
+Đáp án: A
+Giải: $(x^n)' = n\,x^{n-1}$ và đạo hàm của hằng số bằng $0$, nên $y' = 3x^2 - 6x$.
+
+Câu 2: Tính tích phân $$I = \int_0^1 2x\,dx$$
+A. $I = 2$
+B. $I = 1$
+C. $I = \dfrac{1}{2}$
+D. $I = 0$
+Đáp án: B
+Giải: $I = x^2\Big|_0^1 = 1 - 0 = 1$.
+
+Câu 3: Giá trị của giới hạn $$\lim_{x \to 0} \frac{\sin 3x}{x}$$ bằng
+A. $0$
+B. $1$
+C. $3$
+D. $\dfrac{1}{3}$
+Đáp án: C
+Giải: $\dfrac{\sin 3x}{x} = 3 \cdot \dfrac{\sin 3x}{3x} \to 3 \cdot 1 = 3$ khi $x \to 0$.
+
+Câu 4: Nghiệm của phương trình $\log_2(x - 1) = 3$ là
+A. $x = 7$
+B. $x = 8$
+C. $x = 9$
+D. $x = 10$
+Đáp án: C
+Giải: Điều kiện $x > 1$. Ta có $x - 1 = 2^3 = 8 \Rightarrow x = 9$ (thỏa mãn).
+
+Câu 5: Trong không gian $Oxyz$, cho $\vec{a} = (1;\,2;\,-2)$. Độ dài của $\vec{a}$ bằng
+A. $3$
+B. $9$
+C. $\sqrt{5}$
+D. $1$
+Đáp án: A
+Giải: $|\vec{a}| = \sqrt{1^2 + 2^2 + (-2)^2} = \sqrt{9} = 3$.
+
+Câu 6 [Đúng/Sai]: Cho hàm số $f(x) = x^2 - 4x + 3$.
+a) $f(1) = 0$
+b) Đồ thị hàm số có trục đối xứng là đường thẳng $x = -2$
+c) Hàm số đồng biến trên khoảng $(2;\,+\infty)$
+d) Giá trị nhỏ nhất của hàm số trên $\mathbb{R}$ bằng $-1$
+Đáp án: Đ S Đ Đ
+Giải: a) $f(1) = 1 - 4 + 3 = 0$.
+b) Trục đối xứng là $x = -\dfrac{b}{2a} = 2$.
+c) $a = 1 > 0$ nên hàm số đồng biến trên $(2;\,+\infty)$.
+d) $f(2) = 4 - 8 + 3 = -1$ là giá trị nhỏ nhất.
+
+Câu 7 [Trả lời ngắn]: Có bao nhiêu cách chọn 2 học sinh từ một nhóm gồm 6 học sinh?
+Đáp án: 15
+Giải: $C_6^2 = \dfrac{6 \cdot 5}{2} = 15$.
+</script>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const LETTERS = "ABCDEF";
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+let IMAGES = {};      // ảnh của đề (id -> dataURL), lưu trong IndexedDB
+// Chữ + công thức + ảnh. Ảnh đứng riêng một dòng là hình minh hoạ -> đặt bên phải cho đỡ tốn chỗ
+const rich = (s, imgs) => {
+  const img = (id, cls) => { const src = (imgs || IMAGES)[id]; return src ? `<img class="qimg${cls}" src="${src}" alt="">` : `<span class="qtype">[ảnh]</span>`; };
+  const figs = [];
+  const body = esc(s)
+    .replace(/(^|\n)[ \t]*((?:\[\[img:\w+\]\][ \t]*)+)(?=\n|$)/g, (m, nl, toks) => { toks.match(/\w+(?=\]\])/g).forEach(id => figs.push(img(id, " fig"))); return nl; })
+    .replace(/\[\[img:(\w+)\]\]/g, (m, id) => img(id, ""))
+    .replace(/\n{2,}/g, "\n").replace(/^\n+|\n+$/g, "");
+  return figs.join("") + body;
+};
+
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+}
+
+/* =================== KaTeX (offline trước, CDN dự phòng) =================== */
+const KATEX_CDN = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/";
+async function loadKatex() {
+  try { await loadScript("katex/katex.min.js"); await loadScript("katex/auto-render.min.js"); }
+  catch (e) {
+    try {
+      const l = document.createElement("link"); l.rel = "stylesheet"; l.href = KATEX_CDN + "katex.min.css"; document.head.appendChild(l);
+      if (!window.katex) await loadScript(KATEX_CDN + "katex.min.js");
+      await loadScript(KATEX_CDN + "contrib/auto-render.min.js");
+    } catch (e2) { console.warn("Không tải được KaTeX, công thức sẽ hiện dạng chữ."); }
+  }
+  ["#qText", "#answers", "#rvBody", "#edPreview"].forEach(s => renderMath($(s)));
+}
+function renderMath(el) {
+  if (!el || !window.renderMathInElement) return;
+  try {
+    window.renderMathInElement(el, {
+      delimiters: [{ left: "$$", right: "$$", display: true }, { left: "\\[", right: "\\]", display: true },
+        { left: "$", right: "$", display: false }, { left: "\\(", right: "\\)", display: false }],
+      throwOnError: false, strict: "ignore"
+    });
+  } catch (e) { console.warn(e); }
+}
+loadKatex();
+
+/* =================== Âm thanh (Web Audio, không cần file) =================== */
+const SFX = (() => {
+  let ctx = null, master = null, noiseBuf = null, muted = false;
+  function init() {
+    if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.7;
+    const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  function tone(f, { dur = .2, type = "sine", vol = .3, to = null, delay = 0, attack = .006, vib = 0 } = {}) {
+    if (!ctx) return;
+    const t = ctx.currentTime + delay, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(master);
+    if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = vib; lg.gain.value = f * .06; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur + .05); }
+    o.start(t); o.stop(t + dur + .05);
+  }
+  function noise({ dur = .3, vol = .3, type = "lowpass", freq = 1000, to = null, q = 1, delay = 0 } = {}) {
+    if (!ctx) return;
+    const t = ctx.currentTime + delay, s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(freq, t); if (to) f.frequency.exponentialRampToValueAtTime(to, t + dur);
+    const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + .05);
+  }
+  const seq = (notes, opt) => notes.forEach(([f, d, dur]) => tone(f, { ...opt, delay: d, dur }));
+  return {
+    init, get muted() { return muted; },
+    toggle() { muted = !muted; if (master) master.gain.value = muted ? 0 : .7; return muted; },
+    click() { tone(700, { dur: .06, type: "square", vol: .07 }); },
+    tick() { tone(1250, { dur: .05, type: "square", vol: .06 }); },
+    timeup() { tone(220, { dur: .5, type: "square", vol: .12 }); tone(165, { dur: .5, type: "square", vol: .1, delay: .05 }); },
+    start() { seq([[392, 0, .18], [523, .12, .18], [659, .24, .18], [784, .36, .5]], { type: "triangle", vol: .25 }); seq([[196, 0, .3], [262, .36, .55]], { type: "square", vol: .06 }); },
+    turn() { seq([[659, 0, .1], [880, .1, .2]], { type: "triangle", vol: .18 }); },
+    question() { tone(880, { dur: .12, type: "triangle", vol: .15 }); tone(1320, { dur: .2, type: "triangle", vol: .12, delay: .08 }); },
+    reveal() { seq([[523, 0, .1], [784, .08, .25]], { type: "sine", vol: .2 }); },
+    correct() { seq([[523, 0, .14], [659, .07, .14], [784, .14, .14], [1046, .21, .3]], { type: "triangle", vol: .25 }); },
+    wrong() { tone(330, { dur: .18, type: "square", vol: .13 }); tone(233, { dur: .4, type: "square", vol: .13, delay: .16 }); },
+    charge() { tone(220, { dur: .5, type: "sawtooth", vol: .1, to: 1500 }); noise({ dur: .5, vol: .07, type: "bandpass", freq: 700, to: 5000, q: 3 }); },
+    hit() { noise({ dur: .4, vol: .55, type: "lowpass", freq: 3500, to: 160 }); tone(170, { dur: .4, type: "sine", vol: .55, to: 38 }); tone(1200, { dur: .12, type: "square", vol: .07, to: 500 }); },
+    roar() { tone(150, { dur: .75, type: "sawtooth", vol: .22, to: 55, vib: 16 }); noise({ dur: .6, vol: .14, type: "lowpass", freq: 700, to: 180 }); },
+    splat() { noise({ dur: .32, vol: .5, type: "bandpass", freq: 520, to: 140, q: 2 }); tone(210, { dur: .28, type: "sine", vol: .38, to: 55 }); },
+    shieldBreak() { [1900, 2500, 3200, 2150, 2800].forEach((f, i) => tone(f, { dur: .28, type: "triangle", vol: .08, delay: .05 + i * .035, to: f * .65 })); noise({ dur: .45, vol: .22, type: "highpass", freq: 2800, delay: .03 }); },
+    explode() { noise({ dur: 1.4, vol: .65, type: "lowpass", freq: 2400, to: 70 }); tone(95, { dur: 1.2, type: "sine", vol: .5, to: 28 }); },
+    victory() { seq([[523, 0, .12], [659, .12, .12], [784, .24, .12], [1046, .36, .3], [880, .72, .14], [988, .86, .14], [1046, 1.0, .14], [1318, 1.14, .9]], { type: "triangle", vol: .26 }); seq([[262, 0, .34], [330, .36, .34], [349, .72, .4], [392, 1.14, .9]], { type: "square", vol: .06 }); },
+    defeat() { seq([[392, 0, .32], [370, .32, .32], [349, .64, .32], [311, .96, 1.0]], { type: "sawtooth", vol: .11, vib: 5 }); },
+    escape() { seq([[523, 0, .15], [440, .16, .15], [392, .32, .5]], { type: "triangle", vol: .2 }); }
+  };
+})();
+
+/* =================== Hạt hiệu ứng (canvas) =================== */
+const FX = (() => {
+  const c = $("#fx"), g = c.getContext("2d");
+  let W = 0, H = 0, parts = [], running = false, last = 0, confettiStop = 0;
+  function resize() { const dpr = Math.min(window.devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; c.width = W * dpr; c.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  addEventListener("resize", resize); resize();
+  function add(p) {
+    parts.push(Object.assign({ vx: 0, vy: 0, grav: 0, drag: 1, life: 1, fade: .4, size: 5, rot: 0, vr: 0, shape: "circle", color: "#fff", shrink: false }, p));
+    if (parts.length > 1500) parts.splice(0, parts.length - 1500);
+    if (!running) { running = true; last = performance.now(); requestAnimationFrame(loop); }
+  }
+  function loop(t) {
+    const dt = Math.min(.05, (t - last) / 1000); last = t;
+    g.clearRect(0, 0, W, H);
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]; p.life -= dt;
+      if (p.life <= 0) { parts.splice(i, 1); continue; }
+      p.vx *= p.drag; p.vy *= p.drag; p.vy += p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      const a = Math.min(1, p.life / p.fade); g.globalAlpha = a; g.fillStyle = p.color;
+      if (p.shape === "rect") { g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); g.restore(); }
+      else if (p.shape === "star") {
+        g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.beginPath();
+        for (let k = 0; k < 10; k++) { const r = k % 2 ? p.size * .45 : p.size; const an = k * Math.PI / 5; g.lineTo(Math.cos(an) * r, Math.sin(an) * r); }
+        g.closePath(); g.fill(); g.restore();
+      } else { g.beginPath(); g.arc(p.x, p.y, Math.max(.5, p.size * (p.shrink ? a : 1)), 0, Math.PI * 2); g.fill(); }
+    }
+    g.globalAlpha = 1;
+    if (parts.length) requestAnimationFrame(loop); else { running = false; g.clearRect(0, 0, W, H); }
+  }
+  function burst(x, y, { n = 50, colors = ["#fff"], speed = 450, size = [3, 8], life = [.5, 1.1], grav = 700, shape = "circle", drag = .985 } = {}) {
+    for (let i = 0; i < n; i++) {
+      const an = Math.random() * Math.PI * 2, sp = speed * (.3 + Math.random() * .7);
+      add({ x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - speed * .25, grav, drag, life: rand(life[0], life[1]), fade: .35, size: rand(size[0], size[1]),
+        color: pick(colors), shape: shape === "mix" ? pick(["circle", "star", "rect"]) : shape, vr: rand(-10, 10) });
+    }
+  }
+  function confetti(seconds = 3.5) {
+    const colors = ["#ef4444", "#f59e0b", "#fde047", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#ffffff"];
+    const end = performance.now() + seconds * 1000, t0 = performance.now();
+    (function spawn() {
+      if (confettiStop > t0) return;
+      for (let i = 0; i < 8; i++) add({ x: rand(0, W), y: -20, vx: rand(-80, 80), vy: rand(120, 320), grav: 160, drag: .995, life: rand(2.5, 4.5), fade: .6,
+        size: rand(9, 16), color: pick(colors), shape: Math.random() < .75 ? "rect" : "star", rot: rand(0, 6), vr: rand(-8, 8) });
+      if (performance.now() < end) setTimeout(spawn, 60);
+    })();
+  }
+  return { add, burst, confetti, clear() { parts.length = 0; confettiStop = performance.now(); } };
+})();
+
+/* =================== Đọc câu hỏi dạng chữ =================== */
+const TF_TRUE = /^(đ|đúng|dung|d|t|true|1)$/i, TF_FALSE = /^(s|sai|f|false|0)$/i;
+function parseQuestions(text) {
+  const lines = String(text || "").replace(/\r/g, "").split("\n");
+  const raw = []; let cur = null, field = null;
+  const RX_Q = /^c[âa]u\s*\d*\s*(\[[^\]]*\]|\([^)]*\))?\s*[:.)]\s*(.*)$/iu;
+  const RX_OPT = /^(\*)?\s*([A-F])\s*[.)]\s*(.*)$/u;
+  const RX_ST = /^(\*)?\s*([a-f])\s*\)\s*(.*)$/u;
+  const RX_ANS = /^(đáp\s*án|dap\s*an|trả\s*lời|tra\s*loi)\s*[:.]\s*(.*)$/iu;
+  const RX_EXP = /^(lời\s*giải|loi\s*giai|giải|giai|hướng\s*dẫn)\s*[:.]\s*(.*)$/iu;
+  const add = q => { raw.push(q); return q; };
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    let m;
+    if ((m = line.match(RX_Q))) { cur = add({ q: m[2], tag: m[1] || "", opts: [], st: [], stMark: [], mark: -1, ansRaw: "", exp: "" }); field = "q"; continue; }
+    if (!cur) { cur = add({ q: line, tag: "", opts: [], st: [], stMark: [], mark: -1, ansRaw: "", exp: "" }); field = "q"; continue; }
+    if ((m = line.match(RX_ANS))) { cur.ansRaw = m[2].trim(); if (field !== "exp") field = null; continue; }
+    if (field === "exp") { cur.exp += "\n" + line; continue; }
+    if ((m = line.match(RX_EXP))) { cur.exp = m[2]; field = "exp"; continue; }
+    if ((m = line.match(RX_OPT))) { const i = m[2].charCodeAt(0) - 65; cur.opts[i] = m[3]; if (m[1]) cur.mark = i; field = "o" + i; continue; }
+    if ((m = line.match(RX_ST))) { const i = m[2].charCodeAt(0) - 97; cur.st[i] = m[3]; cur.stMark[i] = !!m[1]; field = "s" + i; continue; }
+    if (field === "q") cur.q += "\n" + line;
+    else if (field && field[0] === "o") cur.opts[+field.slice(1)] += " " + line;
+    else if (field && field[0] === "s") cur.st[+field.slice(1)] += " " + line;
+    else cur.q += "\n" + line;
+  }
+  const questions = [], errors = [];
+  const holes = arr => { for (let i = 0; i < arr.length; i++) if (arr[i] === undefined) return true; return false; };
+  raw.forEach((q, k) => {
+    const name = "Câu " + (k + 1);
+    const tagTF = /đúng|sai/i.test(q.tag), tagShort = /ngắn|ngan|điền|dien/i.test(q.tag);
+    let type = tagTF ? "tf" : tagShort ? "short" : (q.opts.length >= 2 ? "mc" : (q.st.length >= 2 ? "tf" : "short"));
+    if (type === "tf" && q.st.length < 2 && q.opts.length >= 2) type = "mc";
+    const base = { q: q.q.trim(), exp: q.exp.trim() };
+    if (!base.q) { errors.push(name + ": thiếu nội dung câu hỏi."); return; }
+    if (type === "mc") {
+      let ans = q.mark;
+      if (ans < 0 && /^[A-F]\b/i.test(q.ansRaw)) ans = q.ansRaw.toUpperCase().charCodeAt(0) - 65;
+      if (holes(q.opts)) errors.push(name + ": các phương án phải liên tiếp A, B, C, … (đang thiếu chữ cái).");
+      else if (ans < 0) errors.push(name + ": chưa có đáp án đúng (dòng “Đáp án: B” hoặc dấu * trước phương án).");
+      else if (ans >= q.opts.length) errors.push(name + ": đáp án " + LETTERS[ans] + " không có trong các phương án.");
+      else questions.push({ type, ...base, opts: q.opts.map(o => o.trim()), ans });
+    } else if (type === "tf") {
+      if (q.st.length < 2 || holes(q.st)) { errors.push(name + " (Đúng/Sai): cần các ý a), b), … liên tiếp."); return; }
+      let truth = q.stMark.map(Boolean);
+      if (q.ansRaw) {
+        const toks = q.ansRaw.split(/[\s,;\-–]+/).filter(Boolean).map(t => t.replace(/^[a-f]\)?[:.]?/i, "") || t);
+        const vals = toks.map(t => TF_TRUE.test(t) ? true : TF_FALSE.test(t) ? false : null).filter(v => v !== null);
+        if (vals.length === q.st.length) truth = vals;
+        else { errors.push(name + ` (Đúng/Sai): “Đáp án” cần ${q.st.length} giá trị Đ/S, ví dụ “Đ S S Đ”.`); return; }
+      } else if (!q.stMark.some(Boolean)) { errors.push(name + " (Đúng/Sai): chưa có dòng “Đáp án: Đ S …” (hoặc dấu * trước ý đúng)."); return; }
+      questions.push({ type, ...base, st: q.st.map(s => s.trim()), truth: q.st.map((_, i) => !!truth[i]) });
+    } else {
+      if (!q.ansRaw || q.ansRaw === "?") { errors.push(name + " (Trả lời ngắn): chưa có dòng “Đáp án: …”."); return; }
+      questions.push({ type: "short", ...base, answer: q.ansRaw });
+    }
+  });
+  return { questions, errors, total: raw.length };
+}
+// Tách lời giải "a) … b) …" của câu Đúng/Sai theo từng ý
+function splitExp(exp, n) {
+  if (!exp) return [];
+  const pos = [];
+  let from = 0;
+  for (let i = 0; i < n; i++) {
+    const re = new RegExp("(^|\\s)" + "abcdef"[i] + "\\)", "g"); re.lastIndex = from;
+    const m = re.exec(exp); if (!m) return [];
+    pos.push(m.index + m[1].length); from = m.index + m[0].length;
+  }
+  return pos.map((p, i) => exp.slice(p, i + 1 < n ? pos[i + 1] : exp.length).trim());
+}
+const countRounds = qs => qs.reduce((s, q) => s + (q.type === "tf" ? q.st.length : 1), 0);
+
+/* =================== Lưu trữ =================== */
+const STORE_KEY = "dau-boss-toan-hoc.v1";
+const TEAM_DEF = [
+  { name: "Đội Đỏ", c: "#ef4444", armor: "#f87171", cape: "#b91c1c", accent: "#fde047" },
+  { name: "Đội Xanh", c: "#2563eb", armor: "#60a5fa", cape: "#1d4ed8", accent: "#fbbf24" },
+  { name: "Đội Vàng", c: "#ca8a04", armor: "#facc15", cape: "#a16207", accent: "#60a5fa" },
+  { name: "Đội Tím", c: "#9333ea", armor: "#c084fc", cape: "#7e22ce", accent: "#f472b6" }
+];
+const DEFAULT_SETTINGS = { hp: 1000, dmg: 250, shields: 3, time: 30, shuffleQ: false, shuffleA: false, teams: 1, steal: true, teamNames: TEAM_DEF.map(t => t.name) };
+const DEFAULT_TEXT = $("#defaultQuestions").textContent.trim();
+function loadStore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (s && typeof s.text === "string") {
+      const st = { ...DEFAULT_SETTINGS, ...(s.settings || {}) };
+      if (!Array.isArray(st.teamNames) || st.teamNames.length < 4) st.teamNames = DEFAULT_SETTINGS.teamNames.slice();
+      return { text: s.text, settings: st };
+    }
+  } catch (e) {}
+  return { text: DEFAULT_TEXT, settings: { ...DEFAULT_SETTINGS, teamNames: DEFAULT_SETTINGS.teamNames.slice() } };
+}
+function saveStore() { try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { alert("Không lưu được vào trình duyệt (bộ nhớ đầy hoặc bị chặn). Câu hỏi chỉ dùng được trong lần mở này."); } }
+let store = loadStore();
+// Ảnh lưu trong IndexedDB (dung lượng lớn hơn localStorage)
+const IDB = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    try { const r = indexedDB.open("dau-boss-toan-hoc", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }
+    catch (e) { rej(e); }
+  }));
+  return {
+    async get(k) { const db = await open(); return new Promise((res, rej) => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+    async set(k, v) { const db = await open(); return new Promise((res, rej) => { const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+  };
+})();
+function usedImageIds(text) { return new Set((String(text).match(/\[\[img:(\w+)\]\]/g) || []).map(s => s.slice(6, -2))); }
+
+/* =================== Trạng thái trận đấu =================== */
+const G = { phase: "intro", rounds: [], idx: 0, hp: 0, maxHp: 0, dmg: 0, teams: [], cur: 0, actor: 0, stealUsed: false, stealing: false, firstChoice: null, correct: 0, timer: null, deadline: 0, lastSec: -1, shortShown: false };
+const teamMode = () => G.teams.length > 1;
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function buildRounds() {
+  const st = store.settings;
+  let qs = parseQuestions(store.text).questions;
+  if (st.shuffleQ) qs = shuffle(qs.slice());
+  const rounds = [];
+  qs.forEach((q, n) => {
+    const label = "Câu " + (n + 1);
+    if (q.type === "mc") {
+      let opts = q.opts.slice(), ans = q.ans;
+      if (st.shuffleA) { const order = shuffle(opts.map((_, i) => i)); opts = order.map(i => q.opts[i]); ans = order.indexOf(q.ans); }
+      rounds.push({ kind: "mc", label, q: q.q, opts, ans, exp: q.exp });
+    } else if (q.type === "tf") {
+      const parts = splitExp(q.exp, q.st.length);
+      q.st.forEach((s, i) => rounds.push({ kind: "tf", label: label + "abcdef"[i], letter: "abcdef"[i], q: q.q, stmt: s, opts: ["Đúng", "Sai"], ans: q.truth[i] ? 0 : 1, exp: parts[i] || q.exp }));
+    } else rounds.push({ kind: "short", label, q: q.q, answer: q.answer, exp: q.exp });
+  });
+  return rounds;
+}
+
+function newGame() {
+  const st = store.settings;
+  const n = Math.max(1, Math.min(4, +st.teams || 1));
+  G.teams = n === 1
+    ? [{ name: "Cả lớp", c: "#2563eb", armor: "#60a5fa", cape: "#dc2626", accent: "#fbbf24", shields: st.shields, maxShields: st.shields, dmgDone: 0, correct: 0, answered: 0, out: false }]
+    : TEAM_DEF.slice(0, n).map((d, i) => ({ ...d, name: (st.teamNames[i] || d.name).trim() || d.name, shields: st.shields, maxShields: st.shields, dmgDone: 0, correct: 0, answered: 0, out: false }));
+  Object.assign(G, { rounds: buildRounds(), idx: 0, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cur: 0, actor: 0, stealUsed: false, stealing: false, correct: 0, shortShown: false });
+  $("#stealBtns").classList.add("hidden"); $("#btnNext").classList.remove("hidden"); $("#reveal").classList.remove("stealb");
+  stopTimer();
+  resetBoss();
+  renderHeroes();
+  updateHp(true);
+  updateCounters();
+  $("#reveal").classList.add("hidden");
+  const box = $("#answers"); box.innerHTML = ""; box.className = "answers locked";
+  $("#qText").innerHTML = "Bấm <b>Bắt đầu</b> để vào trận!";
+  $("#qBadge").textContent = "Sẵn sàng";
+  $("#qType").classList.add("hidden"); $("#turnChip").classList.add("hidden");
+  $("#timeNum").textContent = st.time > 0 ? st.time : "∞"; $("#timeNum").classList.remove("warn");
+  $("#timerFill").style.transform = "scaleX(1)"; $("#timerFill").classList.remove("warn");
+}
+
+/* ----- Hiệp sĩ & bảng đội ----- */
+function shieldSvg(broken) { return `<svg class="shield${broken ? " broken" : ""}" viewBox="0 0 40 46"><use href="#shieldIco"/></svg>`; }
+function renderHeroes() {
+  const hud = $("#heroHud"), mv = $("#heroMover");
+  if (!teamMode()) {
+    const t = G.teams[0];
+    hud.classList.remove("compact");
+    hud.innerHTML = `<div class="hud-title">ĐỘI HIỆP SĨ <small>Cả lớp</small></div><div id="shields" class="shields" aria-label="Khiên bảo vệ">${
+      Array.from({ length: t.maxShields }, (_, i) => shieldSvg(i >= t.shields)).join("")}</div>`;
+    const looks = [["#a78bfa", "#7c3aed", "#f472b6", ""], ["#60a5fa", "#dc2626", "#fbbf24", " main"], ["#fb923c", "#0d9488", "#a3e635", ""]];
+    mv.className = "";
+    mv.innerHTML = looks.map(([a, c, ac, cls]) => `<div class="kwrap${cls}" style="--armor:${a};--cape:${c};--accent:${ac};--tc:${c}"><svg class="knight" viewBox="0 0 100 130"><use href="#knight"/></svg></div>`).join("");
+  } else {
+    const g2 = G.teams.length >= 3;
+    hud.classList.toggle("compact", g2);
+    hud.innerHTML = `${g2 ? "" : `<div class="hud-title">CÁC ĐỘI <small>lần lượt trả lời</small></div>`}<div class="teams${g2 ? " g2" : ""}">${G.teams.map((t, i) => `
+      <div class="team-row${i === G.cur ? " active" : ""}${t.out ? " out" : ""}" id="trow-${i}" style="--tc:${t.c}">
+        <span class="dot"></span><span class="tn">${esc(t.name)}</span>
+        <span class="ts" id="ts-${i}">${Array.from({ length: t.maxShields }, (_, k) => shieldSvg(k >= t.shields)).join("")}</span>
+        <span class="tdmg" id="tdmg-${i}">⚔ ${t.dmgDone}</span>
+      </div>`).join("")}</div>`;
+    mv.className = "n" + G.teams.length;
+    mv.innerHTML = G.teams.map((t, i) => `<div class="kwrap${i === G.cur ? " active" : ""}${t.out ? " out" : ""}" id="kw-${i}" style="--armor:${t.armor};--cape:${t.cape};--accent:${t.accent};--tc:${t.c}">
+      <span class="ktag">${esc(t.name)}</span><svg class="knight" viewBox="0 0 100 130"><use href="#knight"/></svg></div>`).join("");
+  }
+}
+function markActiveTeam() {
+  if (!teamMode()) return;
+  G.teams.forEach((t, i) => {
+    $("#trow-" + i).classList.toggle("active", i === G.actor);
+    $("#trow-" + i).classList.toggle("out", t.out);
+    $("#kw-" + i).classList.toggle("active", i === G.actor);
+    $("#kw-" + i).classList.toggle("out", t.out);
+    $("#tdmg-" + i).textContent = "⚔ " + t.dmgDone;
+  });
+}
+const activeKnight = () => teamMode() ? $("#kw-" + G.actor) : $("#heroMover .kwrap.main");
+const curTeam = () => G.teams[G.actor];
+function nextAlive(from) {
+  const n = G.teams.length;
+  for (let k = 0; k < n; k++) { const i = (from + k) % n; if (!G.teams[i].out) return i; }
+  return -1;
+}
+
+/* ----- Màn hình bắt đầu ----- */
+function showIntro() {
+  G.phase = "intro";
+  const st = store.settings;
+  const n = +st.teams || 1;
+  const rounds = G.rounds.length;
+  const need = Math.ceil(st.hp / st.dmg);
+  document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", +b.dataset.n === n));
+  $("#introSub").textContent = n === 1 ? "Cả lớp là Đội Hiệp Sĩ — hãy cùng nhau hạ gục Slime King!"
+    : `${n} đội thay phiên nhau tấn công Slime King — đội gây nhiều sát thương nhất là MVP!`;
+  $("#rules").innerHTML = (n === 1 ? [
+    ["✅", `Trả lời <b>ĐÚNG</b>: Hiệp sĩ tung chiêu, Boss mất <b>${st.dmg}</b> HP.`],
+    ["❌", "Trả lời <b>SAI</b> hoặc <b>hết giờ</b>: Boss phản công, cả lớp mất 1 khiên."],
+    ["🏆", "Hạ Boss trước khi mất hết khiên để chiến thắng!"]
+  ] : [
+    ["🔁", "Mỗi lượt <b>một đội</b> trả lời (đội đang tới lượt được tô sáng)."],
+    ["✅", `Đúng: đội tung chiêu, Boss mất <b>${st.dmg}</b> HP và đội được cộng sát thương.`],
+    ["❌", `Sai / hết giờ: Boss đánh đội đó, mất 1 khiên. Hết ${st.shields} khiên thì đội bị loại.`],
+    ...(st.steal !== false ? [["⚡", `Đội trả lời sai → đội khác giơ tay <b>cướp lượt</b>: cướp đúng +${st.dmg} sát thương, cướp sai mất 1 khiên.`]] : []),
+    ["🏆", "Hạ Boss để cả lớp thắng — đội gây nhiều sát thương nhất là MVP!"]
+  ]).map(([i, t]) => `<div class="rule"><span class="ico">${i}</span><span>${t}</span></div>`).join("");
+  const qs = parseQuestions(store.text).questions;
+  const c = { mc: 0, tf: 0, short: 0 }; qs.forEach(q => c[q.type]++);
+  $("#introStats").innerHTML =
+    `<span class="stat">📝 ${qs.length} câu · ${rounds} lượt</span>` +
+    (c.tf || c.short ? `<span class="stat">${c.mc} trắc nghiệm · ${c.tf} đúng/sai · ${c.short} trả lời ngắn</span>` : "") +
+    `<span class="stat">⏱ ${st.time > 0 ? st.time + " giây/câu" : "Không giới hạn giờ"}</span>` +
+    `<span class="stat">🛡 ${st.shields} khiên${n > 1 ? "/đội" : ""}</span>` +
+    `<span class="stat">👑 Boss ${st.hp} HP · cần ${need} câu đúng</span>`;
+  $("#endScreen").classList.add("hidden");
+  $("#intro").classList.remove("hidden");
+  $("#btnStart").focus({ preventScroll: true });
+}
+function setTeams(n) {
+  store.settings.teams = n; saveStore(); newGame(); showIntro(); SFX.init(); SFX.click();
+}
+
+function startGame() {
+  if (G.phase !== "intro" && G.phase !== "end") return;
+  SFX.init();
+  FX.clear();
+  newGame();
+  if (!G.rounds.length) { openEditor(); return; }
+  SFX.start();
+  $("#intro").classList.add("hidden");
+  $("#endScreen").classList.add("hidden");
+  G.phase = "starting";
+  setTimeout(showQuestion, 450);
+}
+
+function updateCounters() {
+  const started = G.phase !== "intro" && G.phase !== "starting";
+  $("#qCounter").textContent = `Lượt ${Math.min(G.idx + (started ? 1 : 0), G.rounds.length)}/${G.rounds.length}`;
+  $("#okCounter").textContent = `✔ ${G.correct} đúng`;
+}
+
+function showQuestion() {
+  const r = G.rounds[G.idx];
+  G.phase = "question";
+  G.shortShown = false;
+  G.actor = G.cur; G.stealUsed = false; G.stealing = false; G.firstChoice = null;
+  updateCounters();
+  markActiveTeam();
+  $("#reveal").classList.add("hidden");
+  $("#qBadge").textContent = r.label;
+  const qt = $("#qType");
+  qt.textContent = r.kind === "tf" ? "Đúng / Sai" : r.kind === "short" ? "Trả lời ngắn" : "Trắc nghiệm";
+  qt.classList.toggle("hidden", r.kind === "mc");
+  const tc = $("#turnChip");
+  if (teamMode()) { const t = curTeam(); tc.textContent = "Lượt: " + t.name; tc.style.setProperty("--tc", t.c); tc.classList.remove("hidden"); }
+  else tc.classList.add("hidden");
+  $("#qText").innerHTML = r.kind === "tf"
+    ? rich(r.q) + `\n<span class="st-lbl">${r.letter})</span> ` + rich(r.stmt)
+    : rich(r.q);
+  const plainLen = (r.q + (r.stmt || "")).replace(/\[\[img:\w+\]\]/g, "").replace(/\\[a-zA-Z]+|[{}^_$]/g, "").length;
+  $("#qText").classList.toggle("long", plainLen > 170 || /\[\[img:/.test(r.q));
+  const box = $("#answers");
+  if (r.kind === "short") {
+    box.className = "answers short";
+    box.innerHTML = `<div class="short-hint">✍ ${teamMode() ? esc(curTeam().name) + " ghi" : "Cả lớp ghi"} đáp án ra bảng con / giấy, giáo viên kiểm tra rồi chấm.</div>
+      <div id="shortAns" class="short-ans hidden"><span class="lbl">ĐÁP ÁN</span>${rich(r.answer)}</div>
+      <div class="judge">
+        <button class="jbtn show" data-act="show">👁 Xem đáp án<kbd>Enter</kbd></button>
+        <button class="jbtn ok" data-act="ok">✔ Trả lời ĐÚNG<kbd>1</kbd></button>
+        <button class="jbtn bad" data-act="bad">✘ Trả lời SAI<kbd>2</kbd></button>
+      </div>`;
+  } else {
+    box.className = "answers" + (r.kind === "tf" ? " tf" : "");
+    box.innerHTML = r.opts.map((o, i) => r.kind === "tf"
+      ? `<button class="ans" data-i="${i}"><span class="key">${i ? "S" : "Đ"}</span><span class="txt">${o}</span></button>`
+      : `<button class="ans" data-i="${i}"><span class="key">${LETTERS[i]}</span><span class="txt">${rich(o)}</span></button>`).join("");
+  }
+  renderMath($("#qText")); renderMath(box);
+  $("#qpanel").scrollTop = 0;
+  const p = $("#qpanel"); p.classList.remove("qpanel-in"); void p.offsetWidth; p.classList.add("qpanel-in");
+  if (teamMode()) { banner("Lượt " + curTeam().name, curTeam().c, true); SFX.turn(); } else SFX.question();
+  startTimer();
+}
+
+/* ----- Đồng hồ ----- */
+function startTimer(override) {
+  stopTimer();
+  const T = override !== undefined ? override : store.settings.time;
+  const fill = $("#timerFill"), num = $("#timeNum");
+  fill.classList.remove("warn"); num.classList.remove("warn");
+  if (!(T > 0)) { num.textContent = "∞"; fill.style.transform = "scaleX(1)"; return; }
+  G.deadline = performance.now() + T * 1000; G.lastSec = -1;
+  const step = () => {
+    const left = Math.max(0, G.deadline - performance.now()), sec = Math.ceil(left / 1000);
+    fill.style.transform = `scaleX(${left / (T * 1000)})`;
+    if (sec !== G.lastSec) {
+      G.lastSec = sec; num.textContent = sec;
+      const warn = sec <= 5; fill.classList.toggle("warn", warn); num.classList.toggle("warn", warn);
+      if (warn && sec > 0) SFX.tick();
+    }
+    if (left <= 0) { stopTimer(); onTimeUp(); }
+  };
+  step();
+  G.timer = setInterval(step, 100);
+}
+function stopTimer() { if (G.timer) clearInterval(G.timer); G.timer = null; $("#timeNum").classList.remove("warn"); }
+function onTimeUp() {
+  const r = G.rounds[G.idx];
+  if (r.kind === "short") { SFX.timeup(); banner("HẾT GIỜ!", "#ef4444"); showShortAnswer(); return; }
+  resolve(null);
+}
+
+/* ----- Trả lời ----- */
+function choose(i) {
+  if (G.phase !== "question") return;
+  const b = $("#answers").querySelectorAll(".ans")[i];
+  if (b && b.classList.contains("wrong")) return; // phương án đội trước đã chọn sai
+  if (document.activeElement) document.activeElement.blur();
+  resolve(i);
+}
+function showShortAnswer() {
+  if (G.phase !== "question" || G.shortShown) return;
+  G.shortShown = true; stopTimer(); SFX.reveal();
+  const a = $("#shortAns"); if (a) a.classList.remove("hidden");
+  const b = document.querySelector('.jbtn[data-act="show"]'); if (b) b.classList.add("hidden");
+}
+function judgeShort(ok) {
+  if (G.phase !== "question") return;
+  if (document.activeElement) document.activeElement.blur();
+  if (ok) showShortAnswer(); else stopTimer(); // chấm sai thì chưa lộ đáp án — đội khác còn có thể cướp lượt
+  settle(ok, ok ? 0 : "x");
+}
+async function resolve(choice) {
+  if (G.phase !== "question") return;
+  const r = G.rounds[G.idx];
+  G.phase = "resolving";
+  stopTimer();
+  const box = $("#answers"); box.classList.add("locked");
+  const btns = [...box.querySelectorAll(".ans")];
+  if (choice !== null && btns[choice]) btns[choice].classList.add("picked");
+  await sleep(380);
+  if (choice !== null && btns[choice]) { btns[choice].classList.remove("picked"); btns[choice].classList.add(choice === r.ans ? "correct" : "wrong"); }
+  await settle(choice === r.ans, choice);
+}
+// Hiện đáp án đúng trên các nút (chỉ làm khi không còn ai cướp lượt)
+function revealAnswerButtons() {
+  const r = G.rounds[G.idx];
+  if (r.kind === "short") { const a = $("#shortAns"); if (a) a.classList.remove("hidden"); const b = document.querySelector('.jbtn[data-act="show"]'); if (b) b.classList.add("hidden"); return; }
+  [...$("#answers").querySelectorAll(".ans")].forEach((b, i) => {
+    if (i === r.ans) { b.classList.remove("wrong"); b.classList.add("correct"); }
+    else if (!b.classList.contains("wrong")) b.classList.add("dim");
+  });
+}
+
+/* ----- Cướp lượt (chế độ chia đội) ----- */
+function stealCandidates() {
+  return G.teams.map((t, i) => i).filter(i => i !== G.actor && !G.teams[i].out);
+}
+function canSteal() {
+  const r = G.rounds[G.idx];
+  if (!teamMode() || !store.settings.steal || G.stealUsed || G.hp <= 0) return false;
+  if (r.kind === "tf") return false;                       // chỉ 2 lựa chọn: cướp là chắc chắn đúng
+  if (r.kind === "short" && G.shortShown) return false;     // đáp án đã lộ
+  if (r.kind === "mc" && r.opts.length - $("#answers").querySelectorAll(".ans.wrong").length < 2) return false;
+  return stealCandidates().length > 0;
+}
+function offerSteal() {
+  G.phase = "steal";
+  G.stealUsed = true;
+  const rv = $("#reveal");
+  rv.classList.remove("okb", "badb", "wide"); rv.classList.add("stealb");
+  const loser = curTeam();
+  $("#rvTitle").textContent = `⚡ CƯỚP LƯỢT! ${loser.name} trả lời chưa đúng.`;
+  $("#rvBody").style.display = "";
+  $("#rvBody").innerHTML = `Đội nào giơ tay trước được giành quyền trả lời câu này.\n<span class="lbl">Cướp đúng:</span> +${G.dmg} sát thương cho đội cướp · <span class="lbl">Cướp sai:</span> mất 1 khiên.`;
+  $("#stealBtns").innerHTML = stealCandidates().map(i => `<button class="steal-btn" data-i="${i}" style="--tc:${G.teams[i].c}">⚡ ${esc(G.teams[i].name)}<kbd>${i + 1}</kbd></button>`).join("")
+    + `<button class="steal-btn none" data-i="-1">Không đội nào cướp<kbd>0</kbd></button>`;
+  $("#stealBtns").classList.remove("hidden");
+  $("#btnNext").classList.add("hidden");
+  rv.classList.remove("hidden");
+  banner("CƯỚP LƯỢT!", "#f59e0b"); SFX.turn();
+}
+function pickStealer(i) {
+  if (G.phase !== "steal") return;
+  if (i >= 0 && !stealCandidates().includes(i)) return; // đội đã bị loại / chính đội vừa trả lời
+  if (document.activeElement) document.activeElement.blur();
+  $("#stealBtns").classList.add("hidden"); $("#btnNext").classList.remove("hidden");
+  $("#reveal").classList.remove("stealb");
+  if (i < 0 || !stealCandidates().includes(i)) { SFX.click(); revealAnswerButtons(); showReveal(false, G.firstChoice); return; }
+  const r = G.rounds[G.idx];
+  G.actor = i; G.stealing = true;
+  $("#reveal").classList.add("hidden");
+  markActiveTeam();
+  const t = curTeam(), tc = $("#turnChip");
+  tc.textContent = "⚡ Cướp lượt: " + t.name; tc.style.setProperty("--tc", t.c); tc.classList.remove("hidden");
+  if (r.kind === "short") {
+    const h = document.querySelector(".short-hint"); if (h) h.textContent = `⚡ ${t.name} cướp lượt — ghi đáp án ra bảng con, giáo viên chấm.`;
+  }
+  $("#answers").classList.remove("locked");
+  banner(t.name + " cướp lượt!", t.c, true); SFX.turn();
+  G.phase = "question";
+  startTimer(store.settings.time > 0 ? Math.max(5, Math.ceil(store.settings.time / 2)) : 0);
+}
+async function settle(ok, choice) {
+  G.phase = "resolving";
+  stopTimer();
+  $("#answers").classList.add("locked");
+  const t = curTeam();
+  t.answered++;
+  if (ok) {
+    G.correct++; t.correct++; updateCounters();
+    SFX.correct(); banner("CHÍNH XÁC!", "#22c55e");
+    await sleep(350);
+    await heroAttack();
+    if (G.hp <= 0) await bossDie();
+  } else {
+    SFX.wrong(); banner(choice === null && G.rounds[G.idx].kind !== "short" ? "HẾT GIỜ!" : "SAI RỒI!", "#ef4444");
+    await sleep(350);
+    await bossAttack();
+  }
+  if (!ok && canSteal()) { G.firstChoice = choice; offerSteal(); return; }
+  revealAnswerButtons();
+  showReveal(ok, choice);
+}
+
+function isOver() { return G.hp <= 0 || nextAlive(0) < 0 || G.idx + 1 >= G.rounds.length; }
+function showReveal(ok, choice) {
+  G.phase = "reveal";
+  const r = G.rounds[G.idx], t = curTeam();
+  const rv = $("#reveal");
+  rv.classList.remove("okb", "badb"); rv.classList.add(ok ? "okb" : "badb");
+  const who = teamMode() ? t.name : "Lớp";
+  let title;
+  if (G.stealing) {
+    title = ok ? (G.hp <= 0 ? `🏆 ${t.name} cướp lượt và tung đòn kết liễu! Slime King đã gục ngã!` : `⚡ ${t.name} cướp lượt thành công! +${G.dmg} sát thương.`)
+      : `❌ ${t.name} cướp lượt nhưng chưa đúng — ` + (t.shields <= 0 ? "mất khiên cuối cùng và bị loại!" : "mất 1 khiên.");
+  }
+  else if (ok) title = G.hp <= 0 ? `🏆 Đòn kết liễu${teamMode() ? " của " + t.name : ""}! Slime King đã gục ngã!` : `✅ Chính xác! ${teamMode() ? t.name + " gây" : "Boss mất"} ${G.dmg} ${teamMode() ? "sát thương" : "HP"}.`;
+  else title = (choice === null ? "⏰ Hết giờ! " : "❌ Chưa đúng! ") + (t.shields <= 0 ? (teamMode() ? t.name + " mất khiên cuối cùng và bị loại!" : "Khiên cuối cùng đã vỡ…") : who + " mất 1 khiên.");
+  $("#rvTitle").textContent = title;
+  let body = "";
+  if (!ok) {
+    if (r.kind === "mc") body += `<span class="lbl">Đáp án đúng:</span> ${LETTERS[r.ans]}. ${rich(r.opts[r.ans])}`;
+    else if (r.kind === "tf") body += `<span class="lbl">Đáp án đúng:</span> Ý ${r.letter}) là <b>${r.ans === 0 ? "ĐÚNG" : "SAI"}</b>`;
+    else body += `<span class="lbl">Đáp án đúng:</span> ${rich(r.answer)}`;
+  }
+  if (r.exp) body += (body ? "\n" : "") + `<span class="lbl">Lời giải:</span> ${rich(r.exp)}`;
+  $("#rvBody").innerHTML = body;
+  $("#rvBody").style.display = body ? "" : "none";
+  rv.classList.toggle("wide", body.length > 260 || /qimg/.test(body));
+  $("#btnNext").textContent = isOver() ? "Xem kết quả 🏁" : "Câu tiếp theo ▶";
+  rv.classList.remove("hidden");
+  renderMath($("#rvBody"));
+  $("#btnNext").focus({ preventScroll: true });
+}
+
+function next() {
+  if (G.phase !== "reveal") return;
+  if (document.activeElement) document.activeElement.blur();
+  SFX.click();
+  if (G.hp <= 0) return endGame("win");
+  if (nextAlive(0) < 0) return endGame("lose");
+  if (G.idx + 1 >= G.rounds.length) return endGame("escape");
+  G.idx++;
+  if (teamMode()) G.cur = nextAlive(G.cur + 1);
+  showQuestion();
+}
+
+function endGame(type) {
+  G.phase = "end";
+  stopTimer();
+  $("#reveal").classList.add("hidden");
+  const n = G.rounds.length, answered = Math.min(G.idx + 1, n);
+  const ratio = answered ? G.correct / answered : 0;
+  if (!teamMode()) {
+    const t = G.teams[0];
+    const stars = type === "win" ? (t.shields === t.maxShields ? 3 : ratio >= .7 ? 2 : 1) : (ratio >= .5 ? 1 : 0);
+    $("#endStars").innerHTML = [0, 1, 2].map(i => `<span class="${i < stars ? "" : "off"}">⭐</span>`).join("");
+    $("#endRank").innerHTML = "";
+    const T = {
+      win: ["CHIẾN THẮNG!", "Đội Hiệp Sĩ đã hạ gục Slime King. Cả lớp xuất sắc!"],
+      lose: ["THẤT BẠI…", "Slime King đã phá hết khiên. Ôn lại bài và phục thù nhé!"],
+      escape: ["BOSS CHẠY THOÁT!", `Hết câu hỏi mà Slime King vẫn còn ${G.hp} HP. Suýt nữa thì thắng rồi!`]
+    }[type];
+    $("#endTitle").textContent = T[0]; $("#endSub").textContent = T[1];
+    $("#endStats").innerHTML = `<span class="stat">✔ Đúng ${G.correct}/${answered} lượt</span><span class="stat">🛡 Còn ${Math.max(0, t.shields)}/${t.maxShields} khiên</span><span class="stat">👑 Boss còn ${Math.max(0, G.hp)}/${G.maxHp} HP</span>`;
+  } else {
+    const ranked = G.teams.slice().sort((a, b) => b.dmgDone - a.dmgDone || b.shields - a.shields || b.correct - a.correct);
+    const top = ranked[0];
+    $("#endStars").innerHTML = type === "win" ? "🏆" : type === "lose" ? "💀" : "⏳";
+    const T = {
+      win: ["CHIẾN THẮNG!", `Slime King đã gục ngã! MVP: ${top.name} với ${top.dmgDone} sát thương.`],
+      lose: ["THẤT BẠI…", "Tất cả các đội đã mất hết khiên. Ôn lại bài và phục thù nhé!"],
+      escape: ["BOSS CHẠY THOÁT!", `Slime King còn ${G.hp} HP. Đội dẫn đầu: ${top.name}.`]
+    }[type];
+    $("#endTitle").textContent = T[0]; $("#endSub").textContent = T[1];
+    $("#endRank").innerHTML = ranked.map((t, i) => `<div class="rank-row" style="--tc:${t.c}"><span class="medal">${["🥇", "🥈", "🥉", "🏅"][i]}</span>
+      <span class="rn">${esc(t.name)}${t.out ? " (bị loại)" : ""}</span><span>⚔ ${t.dmgDone}</span><span title="Cướp lượt thành công">⚡ ${t.steals || 0}</span><span>✔ ${t.correct}/${t.answered}</span><span>🛡 ${Math.max(0, t.shields)}</span></div>`).join("");
+    $("#endStats").innerHTML = `<span class="stat">👑 Boss còn ${Math.max(0, G.hp)}/${G.maxHp} HP</span><span class="stat">✔ Cả lớp đúng ${G.correct}/${answered} lượt</span>`;
+  }
+  $("#endScreen").classList.remove("hidden");
+  if (type === "win") { SFX.victory(); FX.confetti(4); } else if (type === "lose") SFX.defeat(); else SFX.escape();
+  $("#btnAgain").focus({ preventScroll: true });
+}
+
+/* =================== Hoạt cảnh =================== */
+function center(el, fx = .5, fy = .5) { const r = el.getBoundingClientRect(); return { x: r.left + r.width * fx, y: r.top + r.height * fy }; }
+function banner(text, color, small) {
+  const b = $("#banner"); b.textContent = text; b.style.color = color; b.classList.toggle("small", !!small);
+  b.classList.remove("show"); void b.offsetWidth; b.classList.add("show");
+}
+function flash(kind = "white", strength = .85) {
+  const el = kind === "red" ? $("#vignette") : $("#flash");
+  el.animate([{ opacity: 0 }, { opacity: strength }, { opacity: 0 }], { duration: kind === "red" ? 600 : 260, easing: "ease-out" });
+}
+function shake(px = 10, ms = 350) {
+  const k = []; for (let i = 0; i < 8; i++) k.push({ transform: `translate(${rand(-px, px)}px,${rand(-px, px)}px)` });
+  k.push({ transform: "translate(0,0)" }); $("#app").animate(k, { duration: ms, easing: "linear" });
+}
+function fly(a, b, { duration = 420, arc = -60, cls = "orb-hero", trail = ["#fff"] } = {}) {
+  return new Promise(res => {
+    const el = document.createElement("div"); el.className = "orb " + cls; document.body.appendChild(el);
+    const t0 = performance.now(); let fin = false;
+    const done = () => { if (fin) return; fin = true; el.remove(); res(); };
+    setTimeout(done, duration + 150); // dự phòng khi trình duyệt tạm dừng khung hình
+    (function step(t) {
+      if (fin) return;
+      const k = Math.min(1, (t - t0) / duration), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      const x = a.x + (b.x - a.x) * e, y = a.y + (b.y - a.y) * e + arc * 4 * e * (1 - e);
+      el.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) scale(${.75 + .45 * Math.sin(k * Math.PI)}) rotate(${k * 540}deg)`;
+      for (let i = 0; i < 3; i++) FX.add({ x: x + rand(-8, 8), y: y + rand(-8, 8), vx: rand(-70, 70), vy: rand(-70, 70), life: rand(.25, .55), fade: .35, size: rand(3, 8), color: pick(trail), shrink: true });
+      if (k < 1) requestAnimationFrame(step); else done();
+    })(t0);
+  });
+}
+function dmgText(p, txt) {
+  const d = document.createElement("div"); d.className = "dmg"; d.textContent = txt;
+  d.style.left = p.x + "px"; d.style.top = p.y + "px"; document.body.appendChild(d); setTimeout(() => d.remove(), 1400);
+}
+function cancelAnims(el) { if (el) el.getAnimations().forEach(a => a.cancel()); }
+function anim(el, frames, opts) {
+  const a = el.animate(frames, opts);
+  return Promise.race([a.finished.catch(() => {}), sleep((opts.duration || 0) + (opts.delay || 0) + 200)]);
+}
+
+async function heroAttack() {
+  const kw = activeKnight(), mover = $("#heroMover");
+  mover.classList.add("charging");
+  SFX.charge();
+  await anim(kw, [{ transform: "translateX(0)" }, { transform: "translateX(-18px) scale(.97)" }, { transform: "translateX(46px) scale(1.06)" }],
+    { duration: 480, easing: "cubic-bezier(.5,0,.2,1)", fill: "forwards" });
+  const a = center(kw, .8, .3), b = center($("#boss"), .5, .55);
+  const flight = fly(a, b, { duration: 420, arc: -70, cls: "orb-hero", trail: ["#fde047", "#facc15", "#ffffff", "#fb923c"] });
+  anim(kw, [{ transform: "translateX(46px) scale(1.06)" }, { transform: "translateX(0) scale(1)" }], { duration: 420, delay: 120, easing: "ease-out", fill: "forwards" }).then(() => cancelAnims(kw));
+  await flight;
+  mover.classList.remove("charging");
+  SFX.hit(); flash("white"); shake(12, 380);
+  const bw = $("#bossWrap");
+  bw.classList.add("hurt");
+  bw.animate([{ transform: "translateX(0)" }, { transform: "translateX(22px)" }, { transform: "translateX(-14px)" }, { transform: "translateX(8px)" }, { transform: "translateX(0)" }], { duration: 420 });
+  setTimeout(() => bw.classList.remove("hurt"), 480);
+  FX.burst(b.x, b.y, { n: 80, colors: ["#fde047", "#fb923c", "#ffffff", "#f87171", "#facc15"], speed: 560, shape: "mix", size: [4, 10] });
+  dmgText({ x: b.x, y: b.y - 40 }, "-" + G.dmg);
+  const t = curTeam(); t.dmgDone += Math.min(G.dmg, G.hp); if (G.stealing) t.steals = (t.steals || 0) + 1;
+  G.hp = Math.max(0, G.hp - G.dmg);
+  updateHp(); markActiveTeam();
+  await sleep(750);
+}
+
+async function bossAttack() {
+  const bw = $("#bossWrap"), mover = $("#bossMover"), kw = activeKnight();
+  bw.classList.add("angry");
+  SFX.roar();
+  await anim(mover, [{ transform: "translate(0,0) scale(1,1)" }, { transform: "translate(12px,0) scale(1.14,.82)" }, { transform: "translate(-40px,-50px) scale(.9,1.12)" }, { transform: "translate(-26px,0) scale(1.08,.93)" }],
+    { duration: 700, easing: "ease-in-out", fill: "forwards" });
+  const a = center($("#boss"), .45, .78), b = center(kw, .5, .5);
+  await fly(a, b, { duration: 560, arc: -160, cls: "orb-slime", trail: ["#34d399", "#10b981", "#a7f3d0", "#065f46"] });
+  SFX.splat(); SFX.shieldBreak(); flash("red"); shake(16, 450);
+  FX.burst(b.x, b.y, { n: 70, colors: ["#34d399", "#10b981", "#6ee7b7", "#047857", "#d1fae5"], speed: 480, size: [4, 11], grav: 900 });
+  kw.animate([{ transform: "translateX(0)" }, { transform: "translateX(-30px)" }, { transform: "translateX(0)" }], { duration: 500, easing: "ease-out" });
+  (teamMode() ? [kw] : [...document.querySelectorAll("#heroMover .kwrap")]).forEach(k => k.querySelector(".knight").animate(
+    [{ filter: "none" }, { filter: "brightness(1.3) sepia(1) hue-rotate(-50deg) saturate(6)" }, { filter: "none" }], { duration: 220, iterations: 3 }));
+  const t = curTeam();
+  t.shields = Math.max(0, t.shields - 1);
+  breakShield(G.cur, t.shields);
+  if (t.shields <= 0 && teamMode()) { t.out = true; setTimeout(markActiveTeam, 700); }
+  anim(mover, [{ transform: "translate(-26px,0) scale(1.08,.93)" }, { transform: "translate(0,0) scale(1,1)" }], { duration: 450, easing: "ease-out", fill: "forwards" }).then(() => cancelAnims(mover));
+  await sleep(800);
+  bw.classList.remove("angry");
+}
+
+async function bossDie() {
+  const bw = $("#bossWrap"), mover = $("#bossMover"), r = $("#boss").getBoundingClientRect();
+  bw.classList.add("hurt");
+  SFX.explode();
+  for (let i = 0; i < 7; i++) setTimeout(() => {
+    FX.burst(r.left + r.width * rand(.2, .8), r.top + r.height * rand(.25, .8), { n: 45, colors: ["#fde047", "#f97316", "#ffffff", "#34d399", "#10b981"], speed: 520, shape: "mix" });
+    flash("white", .45); shake(10, 200);
+  }, i * 170);
+  await anim(mover, [{ transform: "scale(1,1)", opacity: 1 }, { transform: "scale(1.12,.9)", opacity: 1, offset: .35 }, { transform: "scale(1.5,.05)", opacity: 0 }],
+    { duration: 1350, easing: "ease-in", fill: "forwards" });
+  bw.classList.add("dead"); bw.classList.remove("hurt");
+  FX.burst(r.left + r.width / 2, r.bottom - 20, { n: 90, colors: ["#34d399", "#10b981", "#a7f3d0", "#fde047"], speed: 650, size: [4, 12] });
+  await sleep(500);
+}
+function resetBoss() {
+  const bw = $("#bossWrap");
+  bw.classList.remove("dead", "hurt", "angry");
+  cancelAnims($("#bossMover")); cancelAnims(bw);
+}
+
+function updateHp(instant) {
+  const pct = G.maxHp ? Math.max(0, G.hp) / G.maxHp * 100 : 0;
+  const fill = $("#hpFill"), lag = $("#hpLag");
+  if (instant) { fill.style.transition = lag.style.transition = "none"; }
+  fill.style.width = pct + "%"; lag.style.width = pct + "%";
+  fill.classList.toggle("mid", pct <= 50 && pct > 25); fill.classList.toggle("low", pct <= 25);
+  $("#hpText").textContent = `${Math.max(0, G.hp)} / ${G.maxHp} HP`;
+  if (instant) { void fill.offsetWidth; fill.style.transition = lag.style.transition = ""; }
+}
+function breakShield(ti, i) {
+  const box = teamMode() ? $("#ts-" + ti) : $("#shields");
+  const s = box && box.children[i]; if (!s) return;
+  s.classList.add("breaking");
+  const p = center(s);
+  FX.burst(p.x, p.y, { n: 24, colors: ["#93c5fd", "#3b82f6", "#e0f2fe", "#ffffff"], speed: 300, size: [2, 6], shape: "rect" });
+  setTimeout(() => { s.classList.remove("breaking"); s.classList.add("broken"); }, 650);
+}
+
+/* =================== Soạn câu hỏi & nhập Word =================== */
+let edImages = {};       // ảnh trong lúc soạn (chưa lưu)
+let pendingImport = null;
+function openEditor() {
+  if (G.phase === "resolving") return;
+  if ((G.phase === "question" || G.phase === "reveal" || G.phase === "steal") && !confirm("Dừng trận đấu đang chơi để soạn câu hỏi?")) return;
+  stopTimer();
+  G.phase = "editor";
+  const st = store.settings;
+  edImages = { ...IMAGES };
+  pendingImport = null; $("#impBox").classList.add("hidden");
+  $("#edText").value = store.text;
+  $("#sHp").value = st.hp; $("#sDmg").value = st.dmg; $("#sShields").value = st.shields; $("#sTime").value = st.time;
+  $("#sTeams").value = String(st.teams || 1);
+  $("#sShufQ").checked = !!st.shuffleQ; $("#sShufA").checked = !!st.shuffleA; $("#sSteal").checked = st.steal !== false;
+  $("#tNames").innerHTML = TEAM_DEF.map((d, i) => `<label style="--tc:${d.c}"><input data-i="${i}" maxlength="24" value="${esc(st.teamNames[i] || d.name)}"></label>`).join("");
+  $("#intro").classList.add("hidden"); $("#endScreen").classList.add("hidden");
+  $("#editor").classList.remove("hidden");
+  setTab("text");
+  checkEditor();
+}
+function readSettings() {
+  const num = (id, def, min, max) => { const v = Math.round(Number($(id).value)); return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : def; };
+  return {
+    hp: num("#sHp", 1000, 1, 100000), dmg: num("#sDmg", 250, 1, 100000), shields: num("#sShields", 3, 1, 10), time: num("#sTime", 30, 0, 900),
+    shuffleQ: $("#sShufQ").checked, shuffleA: $("#sShufA").checked, steal: $("#sSteal").checked, teams: +$("#sTeams").value || 1,
+    teamNames: [...document.querySelectorAll("#tNames input")].map((x, i) => x.value.trim() || TEAM_DEF[i].name)
+  };
+}
+function checkEditor() {
+  const r = parseQuestions($("#edText").value);
+  const st = readSettings();
+  const need = Math.ceil(st.hp / st.dmg);
+  const c = { mc: 0, tf: 0, short: 0 }; r.questions.forEach(q => c[q.type]++);
+  const rounds = countRounds(r.questions);
+  let html = `✔ Đọc được <b>${r.questions.length}</b> câu hợp lệ (${c.mc} trắc nghiệm, ${c.tf} đúng/sai, ${c.short} trả lời ngắn) → <b>${rounds}</b> lượt chơi. Cần <b>${need}</b> lượt đúng để hạ Boss.`;
+  const warn = [...r.errors];
+  if (rounds && rounds < need) warn.push(`Chỉ có ${rounds} lượt, chưa đủ ${need} lượt đúng để hạ Boss — hãy thêm câu hoặc giảm máu Boss / tăng sát thương.`);
+  if (!r.questions.length) warn.unshift("Chưa có câu hỏi hợp lệ nào.");
+  if (warn.length) html += "<br>⚠ " + warn.map(esc).join("<br>⚠ ");
+  const el = $("#edStatus"); el.innerHTML = html; el.classList.toggle("err", warn.length > 0);
+  return r;
+}
+function setTab(t) {
+  $("#tabText").classList.toggle("on", t === "text"); $("#tabPrev").classList.toggle("on", t === "prev");
+  $("#edText").classList.toggle("hidden", t !== "text"); $("#edPreview").classList.toggle("hidden", t !== "prev");
+  if (t === "prev") renderPreview();
+}
+function renderPreview() {
+  const r = parseQuestions($("#edText").value);
+  const TY = { mc: "Trắc nghiệm", tf: "Đúng/Sai", short: "Trả lời ngắn" };
+  const html = r.questions.map((q, i) => {
+    let body = `<div class="pv-stem">${rich(q.q, edImages)}</div>`;
+    if (q.type === "mc") body += `<ul class="pv-opts">${q.opts.map((o, k) => `<li class="${k === q.ans ? "ok" : ""}"><b>${LETTERS[k]}.</b>${rich(o, edImages)}</li>`).join("")}</ul>`;
+    else if (q.type === "tf") body += `<ul class="pv-opts">${q.st.map((s, k) => `<li class="${q.truth[k] ? "ok" : ""}"><b>${"abcdef"[k]})</b>${rich(s, edImages)} — <i>${q.truth[k] ? "Đúng" : "Sai"}</i></li>`).join("")}</ul>`;
+    else body += `<div class="pv-ans">Đáp án: ${rich(q.answer, edImages)}</div>`;
+    if (q.exp) body += `<div class="pv-exp"><b>Giải:</b> ${rich(q.exp, edImages)}</div>`;
+    return `<div class="pv-q"><div class="pv-h">Câu ${i + 1}<span class="pv-t">${TY[q.type]}</span></div>${body}</div>`;
+  }).join("") + (r.errors.length ? `<div class="pv-q pv-err"><b>Câu chưa hợp lệ (không đưa vào trận):</b><br>${r.errors.map(esc).join("<br>")}</div>` : "");
+  const pv = $("#edPreview");
+  pv.innerHTML = html || "<p>Chưa có câu hỏi.</p>";
+  renderMath(pv);
+}
+async function ensureImportLibs() {
+  if (!window.JSZip) await loadScript("lib/jszip.min.js");
+  if (!window.CFB) await loadScript("lib/cfb.min.js");
+  if (!window.MTEF2TeX) await loadScript("lib/mtef2tex.js");
+  if (!window.DocxImport) await loadScript("lib/docx-import.js");
+}
+async function importFile(file) {
+  if (!file) return;
+  if (!/\.docx$/i.test(file.name)) { alert("Chỉ nhận file Word dạng .docx (nếu là .doc, hãy mở bằng Word rồi Lưu thành .docx)."); return; }
+  const box = $("#impBox");
+  box.classList.remove("hidden");
+  box.innerHTML = `<h3>⏳ Đang đọc “${esc(file.name)}”…</h3>`;
+  try {
+    await ensureImportLibs();
+    const res = await DocxImport.importDocx(await file.arrayBuffer(), { JSZip, CFB, MTEF2TeX, DOMParser });
+    const c = { mc: 0, tf: 0, short: 0 }; res.questions.forEach(q => c[q.type]++);
+    const s = res.stats;
+    if (!res.questions.length) { box.innerHTML = `<h3>⚠ Không tìm thấy câu hỏi nào trong “${esc(file.name)}”.</h3>Hãy kiểm tra file có các dòng “Câu 1.”, “A.”, “B.”… hoặc câu đánh số tự động.`; return; }
+    pendingImport = res;
+    box.innerHTML = `<h3>📄 ${esc(file.name)}: đọc được ${res.questions.length} câu</h3>
+      ${c.mc} trắc nghiệm · ${c.tf} đúng/sai · ${c.short} trả lời ngắn · ${s.mathtype} công thức MathType${s.omml ? " · " + s.omml + " công thức Word" : ""} · ${s.images} ảnh
+      ${s.mathFail ? `<br>⚠ ${s.mathFail} công thức không đọc được (hiện “[?]” — sửa tay trong ô soạn).` : ""}
+      ${s.imgSkipped ? `<br>⚠ ${s.imgSkipped} hình dạng WMF/EMF không hiển thị được trên trình duyệt (đã bỏ qua).` : ""}
+      ${s.warnings.length ? `<div class="warn">⚠ ${s.warnings.map(esc).join("<br>⚠ ")}</div>` : ""}
+      <div class="row"><button class="btn green" id="impReplace">Thay toàn bộ câu hỏi</button><button class="btn ghost" id="impAppend">Thêm vào cuối</button><button class="btn ghost" id="impCancel">Bỏ qua</button></div>`;
+    $("#impReplace").onclick = () => applyImport(false);
+    $("#impAppend").onclick = () => applyImport(true);
+    $("#impCancel").onclick = () => { pendingImport = null; box.classList.add("hidden"); };
+  } catch (e) {
+    console.error(e);
+    box.innerHTML = `<h3>⚠ Không đọc được file.</h3>${esc(e.message || e)}<br>Hãy chắc chắn đây là file .docx (Word 2007 trở lên).`;
+  }
+}
+function applyImport(append) {
+  if (!pendingImport) return;
+  Object.assign(edImages, pendingImport.images);
+  const ta = $("#edText");
+  ta.value = append && ta.value.trim() ? ta.value.trim() + "\n\n" + pendingImport.text : pendingImport.text;
+  pendingImport = null;
+  $("#impBox").classList.add("hidden");
+  checkEditor();
+  setTab("prev");
+}
+async function closeEditor(save) {
+  if (save) {
+    const r = checkEditor();
+    if (!r.questions.length) { alert("Chưa có câu hỏi hợp lệ nào. Vui lòng kiểm tra lại."); return; }
+    store = { text: $("#edText").value, settings: readSettings() };
+    saveStore();
+    const used = usedImageIds(store.text);
+    IMAGES = {}; for (const id of used) if (edImages[id]) IMAGES[id] = edImages[id];
+    try { await IDB.set("images", IMAGES); } catch (e) { if (used.size) alert("Không lưu được ảnh vào trình duyệt — ảnh chỉ hiện trong lần mở này."); }
+  }
+  $("#editor").classList.add("hidden");
+  newGame();
+  showIntro();
+}
+
+/* =================== Sự kiện =================== */
+$("#answers").addEventListener("click", e => {
+  const b = e.target.closest(".ans"); if (b) return choose(+b.dataset.i);
+  const j = e.target.closest(".jbtn"); if (!j) return;
+  if (j.dataset.act === "show") showShortAnswer(); else judgeShort(j.dataset.act === "ok");
+});
+$("#btnNext").addEventListener("click", next);
+$("#stealBtns").addEventListener("click", e => { const b = e.target.closest(".steal-btn"); if (b) pickStealer(+b.dataset.i); });
+$("#btnStart").addEventListener("click", startGame);
+$("#btnAgain").addEventListener("click", startGame);
+["#btnEdit", "#btnEdit2", "#btnEdit3"].forEach(s => $(s).addEventListener("click", openEditor));
+document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => setTeams(+b.dataset.n)));
+$("#edClose").addEventListener("click", () => closeEditor(false));
+$("#edCancel").addEventListener("click", () => closeEditor(false));
+$("#edSave").addEventListener("click", () => closeEditor(true));
+$("#tabText").addEventListener("click", () => setTab("text"));
+$("#tabPrev").addEventListener("click", () => setTab("prev"));
+$("#btnImport").addEventListener("click", () => $("#fileDocx").click());
+$("#fileDocx").addEventListener("change", e => { importFile(e.target.files[0]); e.target.value = ""; });
+(() => {
+  const modal = $("#editor .modal"), hint = $("#dropHint"); let depth = 0;
+  modal.addEventListener("dragenter", e => { if ([...e.dataTransfer.types].includes("Files")) { depth++; hint.classList.remove("hidden"); } });
+  modal.addEventListener("dragleave", () => { depth = Math.max(0, depth - 1); if (!depth) hint.classList.add("hidden"); });
+  modal.addEventListener("dragover", e => e.preventDefault());
+  modal.addEventListener("drop", e => { e.preventDefault(); depth = 0; hint.classList.add("hidden"); const f = e.dataTransfer.files[0]; if (f) importFile(f); });
+})();
+$("#edReset").addEventListener("click", () => {
+  if (!confirm("Thay toàn bộ nội dung bằng câu mẫu và cài đặt mặc định?")) return;
+  $("#edText").value = DEFAULT_TEXT;
+  const d = DEFAULT_SETTINGS;
+  $("#sHp").value = d.hp; $("#sDmg").value = d.dmg; $("#sShields").value = d.shields; $("#sTime").value = d.time;
+  $("#sShufQ").checked = d.shuffleQ; $("#sShufA").checked = d.shuffleA;
+  checkEditor(); if (!$("#edPreview").classList.contains("hidden")) renderPreview();
+});
+["#edText", "#sHp", "#sDmg", "#sShields", "#sTime"].forEach(s => $(s).addEventListener("input", checkEditor));
+$("#edText").addEventListener("keydown", e => {
+  if (e.key === "Tab") { e.preventDefault(); const t = e.target, p = t.selectionStart; t.setRangeText("  ", p, t.selectionEnd, "end"); }
+});
+
+function toggleMute() { SFX.init(); const m = SFX.toggle(); $("#btnMute").textContent = m ? "🔇" : "🔊"; }
+function toggleFull() { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {}); else document.exitFullscreen?.(); }
+$("#btnMute").addEventListener("click", toggleMute);
+$("#btnFull").addEventListener("click", toggleFull);
+
+addEventListener("keydown", e => {
+  if (!$("#editor").classList.contains("hidden")) { if (e.key === "Escape") closeEditor(false); return; }
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  const k = e.key.toLowerCase();
+  if (G.phase === "steal") {
+    if (/^[1-4]$/.test(k)) { e.preventDefault(); pickStealer(+k - 1); return; }
+    if (k === "0" || k === "escape" || k === "n") { e.preventDefault(); pickStealer(-1); return; }
+    return;
+  }
+  if (G.phase === "question") {
+    const r = G.rounds[G.idx];
+    if (r.kind === "short") {
+      if (k === "enter" || k === " ") { e.preventDefault(); showShortAnswer(); return; }
+      if (k === "1" || k === "đ" || k === "y") { e.preventDefault(); judgeShort(true); return; }
+      if (k === "2" || k === "s" || k === "n") { e.preventDefault(); judgeShort(false); return; }
+    } else if (r.kind === "tf") {
+      const map = { "1": 0, a: 0, "đ": 0, d: 0, "2": 1, b: 1, s: 1 };
+      if (k in map) { e.preventDefault(); choose(map[k]); return; }
+    } else {
+      const map = { a: 0, b: 1, c: 2, d: 3, "1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5 };
+      if (k in map && map[k] < r.opts.length) { e.preventDefault(); choose(map[k]); return; }
+    }
+  }
+  if (k === "f") return toggleFull();
+  if (k === "m") return toggleMute();
+  if (k === "e") return openEditor();
+  if (k === " " || k === "enter" || k === "arrowright") {
+    if (G.phase === "reveal") { e.preventDefault(); next(); }
+    else if (G.phase === "intro" || G.phase === "end") { e.preventDefault(); startGame(); }
+  }
+});
+
+/* =================== Khởi động =================== */
+newGame();
+showIntro();
+IDB.get("images").then(v => { if (v && typeof v === "object") { IMAGES = v; } }).catch(() => {});
+</script>
+</body>
+</html>
