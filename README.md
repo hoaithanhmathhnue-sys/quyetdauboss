@@ -13,7 +13,7 @@ Chạy hoàn toàn trên trình duyệt — không cần tài khoản, không c�
 
 ## Cách dùng nhanh
 
-1. Mở `index.html` bằng Chrome hoặc Edge (bấm đúp là chạy, không cần mạng).
+1. Mở `index.html` bằng Chrome hoặc Edge (bấm đúp là chạy, không cần mạng) → màn hình giới thiệu **Quyết Chiến Với Slime King** hiện ra, bấm **⚔ VÀO GAME** (hoặc `Enter`).
 2. Bấm **✎ Câu hỏi** → **📄 Nhập file Word (.docx)** hoặc tự gõ câu hỏi → **Lưu**.
 3. Chọn **Cả lớp / 2 đội / 3 đội / 4 đội** rồi bấm **Bắt đầu trận đấu**. Nhấn `F` để chiếu toàn màn hình.
 
@@ -27,6 +27,7 @@ Phím tắt: `A`–`D` hoặc `1`–`4` chọn đáp án · Đúng/Sai: `1`/`2` 
 ```
 index.html              # toàn bộ game (giao diện + logic)
 favicon.svg
+assets/gioi-thieu.jpg   # ảnh màn hình giới thiệu (đã nén ~270 KB)
 lib/mtef2tex.js         # đọc công thức MathType / Equation 3.0 -> LaTeX
 lib/docx-import.js      # đọc đề Word (.docx)
 lib/jszip.min.js        # giải nén .docx
